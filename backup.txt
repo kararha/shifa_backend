@@ -1,0 +1,385 @@
+-- Users table (base table for both doctors and patients)
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('doctor', 'patient', 'admin') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Doctors table
+CREATE TABLE doctors (
+    id INT PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    specialty VARCHAR(100) NOT NULL,
+    license_number VARCHAR(50) UNIQUE NOT NULL,
+    experience_years INT,
+    qualifications TEXT,
+    achievements TEXT,
+    bio TEXT,
+    profile_picture_url VARCHAR(255),
+    consultation_fee DECIMAL(10, 2),
+    rating DECIMAL(3, 2),
+    is_verified BOOLEAN DEFAULT FALSE,
+    is_available BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Doctor availability
+CREATE TABLE doctor_availability (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    doctor_id INT NOT NULL,
+    day_of_week TINYINT NOT NULL,  -- 0 (Sunday) to 6 (Saturday)
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE
+);
+
+-- Patients table
+CREATE TABLE patients (
+    id INT PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    date_of_birth DATE,
+    gender ENUM('male', 'female', 'other') NOT NULL,
+    phone VARCHAR(20),
+    address TEXT,
+    emergency_contact_name VARCHAR(100),
+    emergency_contact_phone VARCHAR(20),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Medical history
+CREATE TABLE medical_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT NOT NULL,
+    condition_name VARCHAR(100) NOT NULL,
+    diagnosis_date DATE,
+    treatment TEXT,
+    is_current BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
+);
+
+-- Appointments table (new)
+CREATE TABLE appointments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT NOT NULL,
+    doctor_id INT NOT NULL,
+    appointment_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    status ENUM('scheduled', 'completed', 'cancelled') NOT NULL DEFAULT 'scheduled',
+    cancellation_reason TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+    FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE
+);
+
+-- Consultations table
+CREATE TABLE consultations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    appointment_id INT NOT NULL,
+    consultation_type ENUM('online', 'home_visit') NOT NULL,
+    status ENUM('requested', 'in_progress', 'completed') NOT NULL,
+    started_at DATETIME,
+    completed_at DATETIME,
+    fee DECIMAL(10, 2),
+    FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+);
+
+-- Consultation details table
+CREATE TABLE consultation_details (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    consultation_id INT NOT NULL,
+    request_details TEXT,
+    symptoms TEXT,
+    diagnosis TEXT,
+    prescription TEXT,
+    notes TEXT,
+    FOREIGN KEY (consultation_id) REFERENCES consultations(id) ON DELETE CASCADE
+);
+
+-- Payments table
+CREATE TABLE payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    consultation_id INT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    status ENUM('pending', 'paid', 'refunded') DEFAULT 'pending',
+    payment_date DATETIME,
+    refund_date DATETIME,
+    FOREIGN KEY (consultation_id) REFERENCES consultations(id) ON DELETE CASCADE
+);
+
+-- Home visits table
+CREATE TABLE home_visits (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    consultation_id INT NOT NULL,
+    address TEXT NOT NULL,
+    additional_fee DECIMAL(10, 2),
+    FOREIGN KEY (consultation_id) REFERENCES consultations(id) ON DELETE CASCADE
+);
+
+-- Reviews table
+CREATE TABLE reviews (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    consultation_id INT NOT NULL,
+    patient_id INT NOT NULL,
+    doctor_id INT NOT NULL,
+    rating TINYINT NOT NULL,
+    comment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (consultation_id) REFERENCES consultations(id) ON DELETE CASCADE,
+    FOREIGN KEY (patient_id) REFERENCES patients(id),
+    FOREIGN KEY (doctor_id) REFERENCES doctors(id)
+);
+
+-- System Log Table
+CREATE TABLE system_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    user_id INT,
+    user_type ENUM('doctor', 'patient', 'admin', 'system') NOT NULL,
+    action_type ENUM('login', 'logout', 'create', 'update', 'delete', 'view', 'book', 'cancel', 'complete', 'payment', 'refund', 'other') NOT NULL,
+    action_description VARCHAR(255) NOT NULL,
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id INT,
+    old_value TEXT,
+    new_value TEXT,
+    ip_address VARCHAR(45),
+    user_agent VARCHAR(255),
+    additional_info JSON,
+    INDEX idx_timestamp (timestamp),
+    INDEX idx_user_id (user_id),
+    INDEX idx_action_type (action_type),
+    INDEX idx_entity_type (entity_type)
+);
+
+-- Stored Procedures
+
+DELIMITER //
+
+-- Procedure to add a log entry
+CREATE PROCEDURE sp_add_log_entry(
+    IN p_user_id INT,
+    IN p_user_type ENUM('doctor', 'patient', 'admin', 'system'),
+    IN p_action_type ENUM('login', 'logout', 'create', 'update', 'delete', 'view', 'book', 'cancel', 'complete', 'payment', 'refund', 'other'),
+    IN p_action_description VARCHAR(255),
+    IN p_entity_type VARCHAR(50),
+    IN p_entity_id INT,
+    IN p_old_value TEXT,
+    IN p_new_value TEXT,
+    IN p_ip_address VARCHAR(45),
+    IN p_user_agent VARCHAR(255),
+    IN p_additional_info JSON
+)
+BEGIN
+    INSERT INTO system_logs (
+        user_id, user_type, action_type, action_description, 
+        entity_type, entity_id, old_value, new_value, 
+        ip_address, user_agent, additional_info
+    ) VALUES (
+        p_user_id, p_user_type, p_action_type, p_action_description, 
+        p_entity_type, p_entity_id, p_old_value, p_new_value, 
+        p_ip_address, p_user_agent, p_additional_info
+    );
+END //
+
+-- Procedure to book an appointment
+CREATE PROCEDURE sp_book_appointment(
+    IN p_patient_id INT,
+    IN p_doctor_id INT,
+    IN p_appointment_date DATE,
+    IN p_start_time TIME,
+    IN p_end_time TIME,
+    OUT p_appointment_id INT,
+    OUT p_error_message VARCHAR(255)
+)
+BEGIN
+    DECLARE v_conflict INT DEFAULT 0;
+    DECLARE v_doctor_available INT DEFAULT 0;
+    
+    -- Check if the doctor is available at the given time
+    SELECT COUNT(*) INTO v_doctor_available
+    FROM doctor_availability
+    WHERE doctor_id = p_doctor_id
+      AND day_of_week = WEEKDAY(p_appointment_date)
+      AND start_time <= p_start_time
+      AND end_time >= p_end_time;
+    
+    IF v_doctor_available = 0 THEN
+        SET p_error_message = 'Doctor is not available at the selected time.';
+    ELSE
+        -- Check for conflicting appointments
+        SELECT COUNT(*) INTO v_conflict
+        FROM appointments
+        WHERE doctor_id = p_doctor_id
+          AND appointment_date = p_appointment_date
+          AND ((start_time <= p_start_time AND end_time > p_start_time)
+            OR (start_time < p_end_time AND end_time >= p_end_time)
+            OR (start_time >= p_start_time AND end_time <= p_end_time));
+        
+        IF v_conflict > 0 THEN
+            SET p_error_message = 'There is a conflicting appointment at the selected time.';
+        ELSE
+            -- Book the appointment
+            INSERT INTO appointments (patient_id, doctor_id, appointment_date, start_time, end_time)
+            VALUES (p_patient_id, p_doctor_id, p_appointment_date, p_start_time, p_end_time);
+            
+            SET p_appointment_id = LAST_INSERT_ID();
+            SET p_error_message = NULL;
+            
+            -- Log the appointment booking
+            CALL sp_add_log_entry(
+                p_patient_id, 'patient', 'book', 'Booked an appointment',
+                'appointment', p_appointment_id, NULL, NULL,
+                NULL, NULL, JSON_OBJECT('doctor_id', p_doctor_id)
+            );
+        END IF;
+    END IF;
+END //
+
+-- Procedure to cancel an appointment
+CREATE PROCEDURE sp_cancel_appointment(
+    IN p_appointment_id INT,
+    IN p_cancellation_reason TEXT,
+    IN p_user_id INT,
+    IN p_user_type ENUM('patient', 'doctor', 'admin'),
+    OUT p_error_message VARCHAR(255)
+)
+BEGIN
+    DECLARE v_appointment_status VARCHAR(20);
+    DECLARE v_patient_id INT;
+    DECLARE v_doctor_id INT;
+    
+    -- Check if the appointment exists and get its status
+    SELECT status, patient_id, doctor_id INTO v_appointment_status, v_patient_id, v_doctor_id
+    FROM appointments
+    WHERE id = p_appointment_id;
+    
+    IF v_appointment_status IS NULL THEN
+        SET p_error_message = 'Appointment not found.';
+    ELSEIF v_appointment_status != 'scheduled' THEN
+        SET p_error_message = 'Only scheduled appointments can be cancelled.';
+    ELSEIF p_user_type = 'patient' AND p_user_id != v_patient_id THEN
+        SET p_error_message = 'You can only cancel your own appointments.';
+    ELSEIF p_user_type = 'doctor' AND p_user_id != v_doctor_id THEN
+        SET p_error_message = 'You can only cancel appointments assigned to you.';
+    ELSE
+        -- Cancel the appointment
+        UPDATE appointments
+        SET status = 'cancelled', cancellation_reason = p_cancellation_reason
+        WHERE id = p_appointment_id;
+        
+        SET p_error_message = NULL;
+        
+        -- Log the cancellation
+        CALL sp_add_log_entry(
+            p_user_id, p_user_type, 'cancel', 'Cancelled an appointment',
+            'appointment', p_appointment_id, NULL, NULL,
+            NULL, NULL, JSON_OBJECT('reason', p_cancellation_reason)
+        );
+    END IF;
+END //
+
+DELIMITER ;
+
+
+
+
+
+-----------------------------------------
+
+Project Overview: Online Doctor Consulta5on and Appointment Pla:orm
+The goal of this project is to develop an integrated pla:orm that enables pa5ents to easily access
+specialized doctors across various medical fields. By categorizing doctors by their special5es, pa5ents can
+seamlessly find the right healthcare professional for their condi5on. Addi5onally, the pla:orm oﬀers
+various features, such as online consulta5ons, home visit services, and profile management for both
+doctors and pa5ents.
+Key Features
+1. Doctor Categoriza5on by Special5es
+- Doctors are listed under categories based on their medical fields (e.g., dermatology, surgery, cosme5c
+surgery).
+- Each specialty includes a list of available doctors, simplifying the search process.
+- Easy naviga5on across categories allows users to quickly find the desired doctor.
+2. Advanced Search Func5onality
+- Users can search for doctors using criteria such as:
+- Doctor's name
+- Medical specialty
+- City or loca5on
+3. Doctor Profiles
+- Each doctor has a personalized profile that displays:
+- Years of experience
+- Academic qualifica5ons
+- Professional achievements
+- Pa5ent reviews and ra5ngs
+- Doctors can upload content such as:
+- Medical ar5cles
+- Educa5onal videos
+- Case studies
+4. Online Medical Consulta5ons
+- Pa5ents can submit detailed requests for medical consulta5ons.
+- There is an op5on to aYach medical reports or images for the doctor to review.
+- The system supports consulta5ons for both exis5ng and new pa5ents.
+5. Home Visit Medical Services
+- Pa5ents can request home visits from doctors for medical condi5ons that require in-person evalua5on.
+- Features of the home visit service:
+- Pa5ents provide their loca5on and phone number for easy coordina5on.
+- Addi5onal fees may be applied for home visits, with the system taking a percentage of these fees as
+profit.
+6. Pa5ent Profiles
+- Users (pa5ents) can create personalized profiles with:
+- Basic informa5on (e.g., loca5on, phone number)
+- Op5on to add addi5onal addresses
+- Tracking of consulta5on requests and medical history
+- Quick edi5ng and upda5ng of personal informa5on
+- Enhanced user experience by allowing pa5ents to easily organize their medical informa5on and
+communicate with doctors.
+Revenue Streams
+1. Doctor Subscrip5ons
+- Doctors can pay for monthly or yearly subscrip5ons to have premium profiles, which include:
+- BeYer visibility within the pla:orm
+- More extensive service lis5ngs and adver5sing op5ons
+2. Paid Adver5sements
+- Doctors can pay for enhanced visibility, including:
+- Priority appearance in search results
+- Display ads on relevant pages
+3. Paid Online Consulta5on Services
+- The pla:orm oﬀers online consulta5ons at a set fee, with the system taking a percentage of the
+consulta5on fees.
+4. Partnerships with Hospitals and Medical Centers
+- Partnerships with hospitals and clinics to promote their services on the pla:orm in exchange for fees or
+revenue-sharing.
+5. Addi5onal Services
+- The pla:orm could also oﬀer:
+- Appointment booking services through the system
+- Sales of medical products in collabora5on with specialized companies
+- Ancillary services such as lab tests, diagnos5c imaging, etc.
+Poten5al Impact
+- For Pa5ents: The pla:orm significantly improves access to medical services by providing a convenient
+way to find and consult with doctors. The ability to request home visits and manage health records
+further enhances the user experience.
+- For Doctors: It provides a strong pla:orm for doctors to showcase their exper5se, increase their pa5ent
+base, and oﬀer paid consulta5ons online.
+- For Healthcare Providers: Hospitals and clinics benefit from increased visibility and new pa5ents
+through partnerships and adver5sing opportuni5es on the pla:orm.
+Conclusion
+This project has the poten5al to be a game-changer in the healthcare sector by leveraging technology to
+bridge the gap between pa5ents and healthcare professionals. The integra5on of consulta5ons, home
+visits, and profile management enhances the user experience while providing a sustainable revenue
+model through subscrip5ons, adver5sements, and partnerships. With growing interest in health tech,
+this pla:orm holds significant poten5al for growth and profitability
+This version of the project idea is more streamlined, oﬀering clarity on each sec5on, and enhances the
+focus on key features, revenue opportuni5es, and poten5al impact.
+
+   I need you to make this idea a webapp use Golang 
+   create a structure for files and for database use mysql 
+   make sure that all details included and i am using python 
+   to handle ai page keep that in mind that mean different services 
+   so use docker for microservices so based on this info above is the schema below need more to be efficient 
+   and make a comment that describe the relation between tables like (one to one) and views something else make search on 
+   home visit how it work what real info needed to make it work correctly 

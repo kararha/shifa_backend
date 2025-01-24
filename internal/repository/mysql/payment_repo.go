@@ -1,0 +1,95 @@
+// repository/mysql/payment_repo.go
+
+package mysql
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	// "time"
+
+	"shifa/internal/repository"
+)
+
+type mysqlPaymentRepo struct {
+	db *sql.DB
+}
+
+func NewMySQLPaymentRepo(db *sql.DB) repository.PaymentRepository {
+	return &mysqlPaymentRepo{db: db}
+}
+
+func (r *mysqlPaymentRepo) Create(ctx context.Context, payment *repository.Payment) error {
+	query := `INSERT INTO payments (consultation_id, home_care_visit_id, amount, status, payment_date)
+			  VALUES (?, ?, ?, ?, ?)`
+	
+	_, err := r.db.ExecContext(ctx, query, payment.ConsultationID, payment.HomeCareVisitID, payment.Amount, payment.Status, payment.PaymentDate)
+	return err
+}
+
+func (r *mysqlPaymentRepo) GetByID(ctx context.Context, id int) (*repository.Payment, error) {
+	query := `SELECT id, consultation_id, home_care_visit_id, amount, status, payment_date, refund_date
+			  FROM payments WHERE id = ?`
+	
+	var payment repository.Payment
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&payment.ID, &payment.ConsultationID, &payment.HomeCareVisitID,
+		&payment.Amount, &payment.Status, &payment.PaymentDate, &payment.RefundDate,
+	)
+	
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.New("payment not found")
+		}
+		return nil, err
+	}
+	
+	return &payment, nil
+}
+
+func (r *mysqlPaymentRepo) UpdateStatus(ctx context.Context, id int, status string) error {
+	query := `UPDATE payments SET status = ? WHERE id = ?`
+	
+	_, err := r.db.ExecContext(ctx, query, status, id)
+	return err
+}
+
+func (r *mysqlPaymentRepo) GetByConsultationID(ctx context.Context, consultationID int) (*repository.Payment, error) {
+	query := `SELECT id, consultation_id, home_care_visit_id, amount, status, payment_date, refund_date
+			  FROM payments WHERE consultation_id = ?`
+	
+	var payment repository.Payment
+	err := r.db.QueryRowContext(ctx, query, consultationID).Scan(
+		&payment.ID, &payment.ConsultationID, &payment.HomeCareVisitID,
+		&payment.Amount, &payment.Status, &payment.PaymentDate, &payment.RefundDate,
+	)
+	
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.New("payment not found")
+		}
+		return nil, err
+	}
+	
+	return &payment, nil
+}
+
+func (r *mysqlPaymentRepo) GetByHomeCareVisitID(ctx context.Context, homeCareVisitID int) (*repository.Payment, error) {
+	query := `SELECT id, consultation_id, home_care_visit_id, amount, status, payment_date, refund_date
+			  FROM payments WHERE home_care_visit_id = ?`
+	
+	var payment repository.Payment
+	err := r.db.QueryRowContext(ctx, query, homeCareVisitID).Scan(
+		&payment.ID, &payment.ConsultationID, &payment.HomeCareVisitID,
+		&payment.Amount, &payment.Status, &payment.PaymentDate, &payment.RefundDate,
+	)
+	
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.New("payment not found")
+		}
+		return nil, err
+	}
+	
+	return &payment, nil
+}

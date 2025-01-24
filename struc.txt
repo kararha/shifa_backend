@@ -1,0 +1,115 @@
+create Large scale online Doctor Consultation and Appointment platform
+shifa/
+├── cmd/
+│   └── server/
+│       └── main.go
+├── internal/
+│   ├── api/
+│   │   ├── handlers/
+│   │   │   ├── user.go
+│   │   │   ├── doctor.go
+│   │   │   ├── patient.go
+│   │   │   ├── home_care_provider.go
+│   │   │   ├── service_type.go
+│   │   │   ├── appointment.go
+│   │   │   ├── consultation.go
+│   │   │   ├── home_care_visit.go
+│   │   │   ├── payment.go
+│   │   │   ├── review.go
+│   │   │   ├── medical_history.go
+│   │   │   ├── system_log.go
+│   │   │   ├── chat_message.go  # New: Handle chat functionality
+│   │   │   └── notification.go  # New: Handle notification functionality
+│   │   ├── middleware/
+│   │   │   ├── auth.go
+│   │   │   └── logging.go
+│   │   └── routes.go
+│   ├── models/
+│   │   ├── user.go
+│   │   ├── doctor.go
+│   │   ├── patient.go
+│   │   ├── home_care_provider.go
+│   │   ├── service_type.go
+│   │   ├── doctor_availability.go
+│   │   ├── medical_history.go
+│   │   ├── appointment.go
+│   │   ├── consultation.go
+│   │   ├── consultation_details.go
+│   │   ├── home_care_visit.go
+│   │   ├── payment.go
+│   │   ├── review.go
+│   │   ├── system_log.go
+│   │   ├── audit_trail.go
+│   │   ├── chat_message.go  # New: Model for chat messages
+│   │   └── notification.go  # New: Model for notifications
+│   ├── repository/
+│   │   ├── mysql/
+│   │   │   ├── user_repo.go
+│   │   │   ├── doctor_repo.go
+│   │   │   ├── patient_repo.go
+│   │   │   ├── home_care_provider_repo.go
+│   │   │   ├── service_type_repo.go
+│   │   │   ├── doctor_availability_repo.go
+│   │   │   ├── medical_history_repo.go
+│   │   │   ├── appointment_repo.go
+│   │   │   ├── consultation_repo.go
+│   │   │   ├── consultation_details_repo.go
+│   │   │   ├── home_care_visit_repo.go
+│   │   │   ├── payment_repo.go
+│   │   │   ├── review_repo.go
+│   │   │   ├── system_log_repo.go
+│   │   │   ├── audit_trail_repo.go
+│   │   │   ├── chat_message_repo.go  # New: Repository for chat messages
+│   │   │   └── notification_repo.go  # New: Repository for notifications
+│   │   └── repository.go
+│   ├── service/
+│   │   ├── user_service.go
+│   │   ├── doctor_service.go
+│   │   ├── patient_service.go
+│   │   ├── home_care_provider_service.go
+│   │   ├── service_type_service.go
+│   │   ├── doctor_availability_service.go
+│   │   ├── medical_history_service.go
+│   │   ├── appointment_service.go
+│   │   ├── consultation_service.go
+│   │   ├── home_care_visit_service.go
+│   │   ├── payment_service.go
+│   │   ├── review_service.go
+│   │   ├── system_log_service.go
+│   │   ├── audit_trail_service.go
+│   │   ├── chat_service.go  # New: Service for chat functionality
+│   │   └── notification_service.go  # New: Service for notification functionality
+│   └── config/
+│       └── config.go
+├── pkg/
+│   ├── database/
+│   │   └── mysql.go
+│   ├── logger/
+│   │   └── logger.go
+├── ai_service/
+│   ├── main.py
+│   ├── requirements.txt
+│   └── ai_models/
+│       └── diagnosis_model.py
+├── scripts/
+│   ├── setup.sh
+│   └── seed_data.go
+├── docs/
+│   ├── api.md
+│   ├── database_schema.md
+│   └── deployment.md
+├── docker-compose.yml
+├── Dockerfile.go
+├── Dockerfile.python
+├── .gitignore
+├── go.mod
+├── go.sum
+└── README.md
+
+
+Would you like me to:
+
+Add role-based route protection?
+Implement refresh token handling?
+Add password reset functionality?
+Add session management?

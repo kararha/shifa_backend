@@ -1,0 +1,31 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.go
+    ports:
+      - "8888:8888"
+    environment:
+      - DB_HOST=localhost
+      - DB_USER=root
+      - DB_PASSWORD=your_secure_password_here
+      - DB_NAME=shifa
+      - AI_SERVICE_URL=http://ai_service:5000
+    depends_on:
+      - mysql
+      - ai_service
+    networks:
+      - shifa-network
+    volumes:
+      - ./logs:/app/logs
+
+  ai_service:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    ports:
+      - "5000:5000"
+    networks:
+      - shifa-network
+    volumes:
+      - ./ai_service/models:/app/models
