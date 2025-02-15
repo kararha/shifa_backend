@@ -1,128 +1,3 @@
-// package service  
-
-// import (  
-// 	"context"  
-// 	"errors"  
-// 	"fmt"  
-// 	"shifa/internal/models"  
-// 	"shifa/internal/repository"  
-
-// 	"github.com/sirupsen/logrus"  
-// )  
-
-// type ConsultationRepository interface {
-// 	Create(ctx context.Context, consultation *models.Consultation) error
-// 	GetByID(ctx context.Context, id int) (*models.Consultation, error)
-// 	GetByAppointmentID(ctx context.Context, appointmentID int) (*models.Consultation, error)
-// 	Update(ctx context.Context, consultation *models.Consultation) error
-// }
-
-// type ConsultationService struct {  
-// 	consultationRepo repository.ConsultationRepository  
-// 	logger           *logrus.Logger  
-// }  
-
-// func NewConsultationService(consultationRepo repository.ConsultationRepository, logger *logrus.Logger) *ConsultationService {  
-// 	return &ConsultationService{  
-// 		consultationRepo: consultationRepo,  
-// 		logger:           logger,  
-// 	}  
-// }  
-
-// func (s *ConsultationService) StartConsultation(ctx context.Context, consultation models.Consultation) error {
-// 	// Validate the consultation model
-// 	if err := s.validateConsultation(consultation); err != nil {
-// 		s.logger.WithError(err).Error("Invalid consultation data")
-// 		return err
-// 	}
-
-// 	// Set the consultation status to "in_progress"
-// 	consultation.Status = "in_progress"
-
-// 	// Convert models.Consultation to repository.Consultation
-// 	repoConsultation := repository.Consultation{
-// 		ID:               consultation.ID,
-// 		PatientID:       consultation.PatientID,
-// 		DoctorID:        consultation.DoctorID,
-// 		AppointmentID:   consultation.AppointmentID,
-// 		ConsultationType: consultation.ConsultationType,
-// 		Status:          consultation.Status,
-// 		StartedAt:       consultation.StartedAt,
-// 		CompletedAt:     consultation.CompletedAt,
-// 		Fee:             consultation.Fee,
-// 	}
-
-// 	// Update the consultation in the repository
-// 	if err := s.consultationRepo.Update(ctx, &repoConsultation); err != nil {
-// 		s.logger.WithError(err).Error("Failed to start consultation")
-// 		return fmt.Errorf("failed to start consultation: %w", err)
-// 	}
-
-// 	s.logger.Infof("Consultation started successfully: %v", consultation)
-// 	return nil
-// }
-
-// func (s *ConsultationService) CompleteConsultation(ctx context.Context, consultation models.Consultation) error {
-// 	// Validate the consultation model
-// 	if err := s.validateConsultation(consultation); err != nil {
-// 		s.logger.WithError(err).Error("Invalid consultation data")
-// 		return err
-// 	}
-
-// 	// Set the consultation status to "completed"
-// 	consultation.Status = "completed"
-
-// 	// Convert models.Consultation to repository.Consultation
-// 	repoConsultation := repository.Consultation{
-// 		ID:               consultation.ID,
-// 		PatientID:       consultation.PatientID,
-// 		DoctorID:        consultation.DoctorID,
-// 		AppointmentID:   consultation .AppointmentID,
-// 		ConsultationType: consultation.ConsultationType,
-// 		Status:          consultation.Status,
-// 		StartedAt:       consultation.StartedAt,
-// 		CompletedAt:     consultation.CompletedAt,
-// 		Fee:             consultation.Fee,
-// 	}
-
-// 	// Update the consultation in the repository
-// 	if err := s.consultationRepo.Update(ctx, &repoConsultation); err != nil {
-// 		s.logger.WithError(err).Error("Failed to complete consultation")
-// 		return fmt.Errorf("failed to complete consultation: %w", err)
-// 	}
-
-// 	s.logger.Infof("Consultation completed successfully: %v", consultation)
-// 	return nil
-// }
-
-
-// func (s *ConsultationService) validateConsultation(consultation models.Consultation) error {
-// 	if consultation.PatientID == 0 {
-// 		return errors.New("patient ID is required")
-// 	}
-
-// 	if consultation.DoctorID == 0 {
-// 		return errors.New("doctor ID is required")
-// 	}
-
-// 	if consultation.StartedAt.IsZero() { // Change StartTime to StartedAt
-// 		return errors.New("start time is required")
-// 	}
-
-// 	if consultation.CompletedAt.IsZero() { // Change EndTime to CompletedAt
-// 		return errors.New("end time is required")
-// 	}
-
-// 	if consultation.Status == "" {
-// 		return errors.New("status is required")
-// 	}
-
-// 	// Add any other validation logic here
-
-// 	return nil
-// }
-
-
 package service
 
 import (
@@ -135,6 +10,15 @@ import (
 
     "github.com/sirupsen/logrus"
 )
+
+type ConsultationRepository interface {
+    Create(ctx context.Context, consultation *models.Consultation) error
+    GetByID(ctx context.Context, id int) (*models.Consultation, error)
+    GetByAppointmentID(ctx context.Context, appointmentID int) (*models.Consultation, error)
+    Update(ctx context.Context, consultation *models.Consultation) error
+    Delete(ctx context.Context, id int) error
+    List(ctx context.Context, filter models.ConsultationFilter, offset, limit int) ([]*models.Consultation, error)
+}
 
 type ConsultationService struct {
     consultationRepo repository.ConsultationRepository
@@ -248,12 +132,6 @@ func (s *ConsultationService) validateConsultation(consultation models.Consultat
     }
     if consultation.DoctorID == 0 {
         return errors.New("doctor ID is required")
-    }
-    if consultation.AppointmentID == 0 {
-        return errors.New("appointment ID is required")
-    }
-    if consultation.ConsultationType == "" {
-        return errors.New("consultation type is required")
     }
     return nil
 }

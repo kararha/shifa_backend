@@ -1,31 +1,56 @@
+version: '3.8'
+
 services:
-  api:
+  mysql:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=  # Set a root password
+      - MYSQL_DATABASE=shifa
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=       # Set a password for the root user
+    ports:
+      - "3307:3306"  # Map to 3307 on the host to avoid conflicts
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s  # Allow extra time for MySQL to initialize
+
+  go-app:
     build:
       context: .
-      dockerfile: Dockerfile.go
+      dockerfile: Dockerfile
     ports:
       - "8888:8888"
     environment:
-      - DB_HOST=localhost
+      - DB_HOST=mysql
       - DB_USER=root
-      - DB_PASSWORD=your_secure_password_here
+      - DB_PASSWORD=  # Match the MySQL root password
       - DB_NAME=shifa
-      - AI_SERVICE_URL=http://ai_service:5000
+      - DB_PORT=3306
     depends_on:
-      - mysql
-      - ai_service
+      mysql:
+        condition: service_healthy
     networks:
-      - shifa-network
-    volumes:
-      - ./logs:/app/logs
+      - app-network
 
-  ai_service:
+  ai-service:
     build:
       context: .
       dockerfile: Dockerfile.python
     ports:
-      - "5000:5000"
+      - "8000:8000"
     networks:
-      - shifa-network
-    volumes:
-      - ./ai_service/models:/app/models
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql_data:

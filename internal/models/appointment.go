@@ -2,9 +2,10 @@
 package models
 
 import (
+    "database/sql/driver"
     "encoding/json"
+    "fmt"
     "time"
-
 )
 
 // CustomTime is a wrapper around time.Time that formats only the time portion
@@ -23,9 +24,14 @@ func (ct *CustomTime) UnmarshalJSON(data []byte) error {
         return err
     }
 
-    t, err := time.Parse("15:04:05", timeStr)
+    // Try parsing as ISO 8601 first
+    t, err := time.Parse(time.RFC3339, timeStr)
     if err != nil {
-        return err
+        // Fallback to time-only format
+        t, err = time.Parse("15:04:05", timeStr)
+        if err != nil {
+            return err
+        }
     }
 
     *ct = CustomTime(t)
@@ -45,6 +51,31 @@ func (ct CustomTime) IsZero() bool {
 // Before reports whether the time instant ct is before u
 func (ct CustomTime) Before(u CustomTime) bool {
     return time.Time(ct).Before(time.Time(u))
+}
+
+// Add the following methods to handle SQL value conversion
+func (ct CustomTime) Value() (driver.Value, error) {
+    return time.Time(ct).Format("15:04:05"), nil
+}
+
+func (ct *CustomTime) Scan(value interface{}) error {
+    if value == nil {
+        return nil
+    }
+
+    switch v := value.(type) {
+    case time.Time:
+        *ct = CustomTime(v)
+        return nil
+    case string:
+        t, err := time.Parse("15:04:05", v)
+        if err != nil {
+            return err
+        }
+        *ct = CustomTime(t)
+        return nil
+    }
+    return fmt.Errorf("cannot scan %T into CustomTime", value)
 }
 
 // Appointment represents an appointment entity

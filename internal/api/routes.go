@@ -46,7 +46,12 @@ func NewRouter(db *sql.DB, log *logrus.Logger , jwtSecret string) *mux.Router {
 
 
     // Initialize services
-    appointmentService := service.NewAppointmentService(appointmentRepo, log)
+    appointmentService := service.NewAppointmentService(
+        appointmentRepo,
+        doctorRepo,
+        homeCareProviderRepo,
+        log,
+    )
     userService := service.NewUserService(userRepo)
     doctorService := service.NewDoctorService(doctorRepo, log)
     serviceTypeService := service.NewServiceTypeService(serviceTypeRepo, log)

@@ -24,12 +24,12 @@ func NewConsultationRepo(db *sql.DB) *ConsultationRepo {
 // Create inserts a new consultation into the database
 func (r *ConsultationRepo) Create(ctx context.Context, consultation *models.Consultation) error {
 	query := `
-		INSERT INTO consultations (appointment_id, consultation_type, status, fee)
+		INSERT INTO consultations (patient_id, doctor_id, status, fee)
 		VALUES (?, ?, ?, ?)
 	`
 	
 	result, err := r.db.ExecContext(ctx, query, 
-		consultation.AppointmentID, consultation.ConsultationType,
+		consultation.PatientID, consultation.DoctorID,
 		consultation.Status, consultation.Fee)
 	if err != nil {
 		return err
@@ -47,14 +47,14 @@ func (r *ConsultationRepo) Create(ctx context.Context, consultation *models.Cons
 // GetByID retrieves a consultation by its ID
 func (r *ConsultationRepo) GetByID(ctx context.Context, id int) (*models.Consultation, error) {
 	query := `
-		SELECT id, appointment_id, consultation_type, status, started_at, completed_at, fee
+		SELECT id, patient_id, doctor_id, status, started_at, completed_at, fee
 		FROM consultations
 		WHERE id = ?
 	`
 
 	var consultation models.Consultation
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&consultation.ID, &consultation.AppointmentID, &consultation.ConsultationType,
+		&consultation.ID, &consultation.PatientID, &consultation.DoctorID,
 		&consultation.Status, &consultation.StartedAt, &consultation.CompletedAt,
 		&consultation.Fee,
 	)
@@ -69,34 +69,10 @@ func (r *ConsultationRepo) GetByID(ctx context.Context, id int) (*models.Consult
 	return &consultation, nil
 }
 
-// Update updates an existing consultation's information
-func (r *ConsultationRepo) Update(ctx context.Context, consultation *models.Consultation) error {
-	query := `
-		UPDATE consultations
-		SET consultation_type = ?, status = ?, started_at = ?, completed_at = ?, fee = ?
-		WHERE id = ?
-	`
-
-	_, err := r.db.ExecContext(ctx, query,
-		consultation.ConsultationType, consultation.Status,
-		consultation.StartedAt, consultation.CompletedAt,
-		consultation.Fee, consultation.ID)
-
-	return err
-}
-
-// Delete removes a consultation from the database
-func (r *ConsultationRepo) Delete(ctx context.Context, id int) error {
-	query := `DELETE FROM consultations WHERE id = ?`
-	_, err := r.db.ExecContext(ctx, query, id)
-	return err
-}
-
-
 // GetByAppointmentID retrieves a consultation by its appointment ID
 func (r *ConsultationRepo) GetByAppointmentID(ctx context.Context, appointmentID int) (*models.Consultation, error) {
     query := `
-        SELECT id, appointment_id, consultation_type, status, started_at, completed_at, fee
+        SELECT id, patient_id, doctor_id, status, started_at, completed_at, fee
         FROM consultations
         WHERE appointment_id = ?
         LIMIT 1
@@ -104,7 +80,7 @@ func (r *ConsultationRepo) GetByAppointmentID(ctx context.Context, appointmentID
 
     var consultation models.Consultation
     err := r.db.QueryRowContext(ctx, query, appointmentID).Scan(
-        &consultation.ID, &consultation.AppointmentID, &consultation.ConsultationType,
+        &consultation.ID, &consultation.PatientID, &consultation.DoctorID,
         &consultation.Status, &consultation.StartedAt, &consultation.CompletedAt,
         &consultation.Fee,
     )
@@ -119,11 +95,33 @@ func (r *ConsultationRepo) GetByAppointmentID(ctx context.Context, appointmentID
     return &consultation, nil
 }
 
+// Update updates an existing consultation's information
+func (r *ConsultationRepo) Update(ctx context.Context, consultation *models.Consultation) error {
+	query := `
+		UPDATE consultations
+		SET status = ?, started_at = ?, completed_at = ?, fee = ?
+		WHERE id = ?
+	`
+
+	_, err := r.db.ExecContext(ctx, query,
+		consultation.Status,
+		consultation.StartedAt, consultation.CompletedAt,
+		consultation.Fee, consultation.ID)
+
+	return err
+}
+
+// Delete removes a consultation from the database
+func (r *ConsultationRepo) Delete(ctx context.Context, id int) error {
+	query := `DELETE FROM consultations WHERE id = ?`
+	_, err := r.db.ExecContext(ctx, query, id)
+	return err
+}
 
 // List retrieves a list of consultations with optional filtering and pagination
 func (r *ConsultationRepo) List(ctx context.Context, filter models.ConsultationFilter, offset, limit int) ([]*models.Consultation, error) {
     query := `
-        SELECT id, patient_id, doctor_id, appointment_id, consultation_type,
+        SELECT id, patient_id, doctor_id,
                status, started_at, completed_at, fee
         FROM consultations
         WHERE 1=1
@@ -138,16 +136,6 @@ func (r *ConsultationRepo) List(ctx context.Context, filter models.ConsultationF
     if filter.DoctorID != 0 {
         query += " AND doctor_id = ?"
         args = append(args, filter.DoctorID)
-    }
-
-    if filter.AppointmentID != 0 {
-        query += " AND appointment_id = ?"
-        args = append(args, filter.AppointmentID)
-    }
-
-    if filter.ConsultationType != "" {
-        query += " AND consultation_type = ?"
-        args = append(args, filter.ConsultationType)
     }
 
     if filter.Status != "" {
@@ -179,7 +167,7 @@ func (r *ConsultationRepo) List(ctx context.Context, filter models.ConsultationF
     args = append(args, limit, offset)
 
     rows, err := r.db.QueryContext(ctx, query, args...)
-    if err != nil {
+    if (err != nil) {
         return nil, err
     }
     defer rows.Close()
@@ -188,9 +176,9 @@ func (r *ConsultationRepo) List(ctx context.Context, filter models.ConsultationF
 	for rows.Next() {
 		var consultation models.Consultation
 		err := rows.Scan(
-			&consultation.ID, &consultation.AppointmentID, &consultation.ConsultationType,
+			&consultation.ID, &consultation.PatientID, &consultation.DoctorID,
 			&consultation.Status, &consultation.StartedAt, &consultation.CompletedAt,
-			&consultation.Fee, &consultation.PatientID, &consultation.DoctorID,
+			&consultation.Fee,
 		)
 		if err != nil {
 			return nil, err

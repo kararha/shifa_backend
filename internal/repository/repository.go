@@ -5,36 +5,34 @@ package repository
 import (
 	"context"
 	"time"
-	"shifa/internal/models"  
+	"shifa/internal/models"
 )
 
-
 type UserRepository interface {
-    Create(ctx context.Context, user *models.User) error
-    GetByID(ctx context.Context, id int) (*models.User, error)
-    GetByEmail(ctx context.Context, email string) (*models.User, error)
-    Update(ctx context.Context, user *models.User) error
-    Delete(ctx context.Context, id int) error
+	Create(ctx context.Context, user *models.User) error
+	GetByID(ctx context.Context, id int) (*models.User, error)
+	GetByEmail(ctx context.Context, email string) (*models.User, error)
+	Update(ctx context.Context, user *models.User) error
+	Delete(ctx context.Context, id int) error
 	List(ctx context.Context, offset, limit int) ([]*models.User, error)
-
 }
 
 type DoctorRepository interface {
-	Create(ctx context.Context, doctor *Doctor) error
-	GetByID(ctx context.Context, id int) (*Doctor, error)
-	GetByUserID(ctx context.Context, userID int) (*Doctor, error)
-	Update(ctx context.Context, doctor *Doctor) error
+	Create(ctx context.Context, doctor *models.Doctor) error
+	GetByID(ctx context.Context, id int) (*models.Doctor, error)
+	GetByUserID(ctx context.Context, userID int) (*models.Doctor, error)
+	Update(ctx context.Context, doctor *models.Doctor) error
 	Delete(ctx context.Context, id int) error
-	GetBySpecialty(ctx context.Context, specialty string, limit, offset int) ([]*Doctor, error)
-	GetByServiceType(ctx context.Context, serviceTypeID int, limit, offset int) ([]*Doctor, error)
+	GetBySpecialty(ctx context.Context, specialty string, limit, offset int) ([]*models.Doctor, error)
+	GetByServiceType(ctx context.Context, serviceTypeID int, limit, offset int) ([]*models.Doctor, error)
 }
 
 type PatientRepository interface {
-    Create(ctx context.Context, patient *models.Patient) error
-    GetByUserID(ctx context.Context, userID int) (*models.Patient, error)
-    Update(ctx context.Context, patient *models.Patient) error
-    Delete(ctx context.Context, userID int) error
-    List(ctx context.Context, offset, limit int) ([]*models.Patient, error)
+	Create(ctx context.Context, patient *models.Patient) error
+	GetByUserID(ctx context.Context, userID int) (*models.Patient, error)
+	Update(ctx context.Context, patient *models.Patient) error
+	Delete(ctx context.Context, userID int) error
+	List(ctx context.Context, offset, limit int) ([]*models.Patient, error)
 }
 
 type HomeCareProviderRepository interface {
@@ -57,10 +55,10 @@ type ServiceTypeRepository interface {
 }
 
 type DoctorAvailabilityRepository interface {
-    Create(ctx context.Context, availability *models.DoctorAvailability) error
-    GetByDoctorID(ctx context.Context, doctorID int) ([]*models.DoctorAvailability, error)
-    Update(ctx context.Context, availability *models.DoctorAvailability) error
-    Delete(ctx context.Context, id int) error
+	Create(ctx context.Context, availability *models.DoctorAvailability) error
+	GetByDoctorID(ctx context.Context, doctorID int) ([]*models.DoctorAvailability, error)
+	Update(ctx context.Context, availability *models.DoctorAvailability) error
+	Delete(ctx context.Context, id int) error
 }
 
 type MedicalHistoryRepository interface {
@@ -70,56 +68,54 @@ type MedicalHistoryRepository interface {
 	Delete(ctx context.Context, id int) error
 }
 
-
 // AppointmentFilter struct should be defined in the repository package
 type AppointmentFilter struct {
-    StartDate    *time.Time
-    EndDate      *time.Time
-    Status       string
-    ProviderType string
+	StartDate    *time.Time
+	EndDate      *time.Time
+	Status       string
+	ProviderType string
 }
 
 type AppointmentRepository interface {
-    Create(ctx context.Context, appointment *models.Appointment) error
-    GetByID(ctx context.Context, id int) (*models.Appointment, error)
-    Update(ctx context.Context, appointment *models.Appointment) error
-    Delete(ctx context.Context, id int) error
-    List(ctx context.Context, filter AppointmentFilter, offset, limit int) ([]*models.Appointment, error)
-    GetByPatientID(ctx context.Context, patientID, limit, offset int) ([]*models.Appointment, error)
-    GetByProviderID(ctx context.Context, providerID int, providerType string) ([]*models.Appointment, error)
+	Create(ctx context.Context, appointment *models.Appointment) error
+	GetByID(ctx context.Context, id int) (*models.Appointment, error)
+	Update(ctx context.Context, appointment *models.Appointment) error
+	Delete(ctx context.Context, id int) error
+	List(ctx context.Context, filter AppointmentFilter, offset, limit int) ([]*models.Appointment, error)
+	GetByPatientID(ctx context.Context, patientID, limit, offset int) ([]*models.Appointment, error)
+	GetByProviderID(ctx context.Context, providerID int, providerType string) ([]*models.Appointment, error)
 }
 
 // ConsultationRepository defines the interface for consultation-related database operations
 type ConsultationRepository interface {
-    // Create inserts a new consultation into the database
-    Create(ctx context.Context, consultation *models.Consultation) error
-    
-    // GetByID retrieves a consultation by its ID
-    GetByID(ctx context.Context, id int) (*models.Consultation, error)
-    
-    // GetByAppointmentID retrieves a consultation by its appointment ID
-    GetByAppointmentID(ctx context.Context, appointmentID int) (*models.Consultation, error)
-    
-    // Update modifies an existing consultation
-    Update(ctx context.Context, consultation *models.Consultation) error
-    
-    // Delete removes a consultation from the database
-    Delete(ctx context.Context, id int) error
-    
-    // List retrieves consultations based on filter criteria with pagination
-    List(ctx context.Context, filter models.ConsultationFilter, offset, limit int) ([]*models.Consultation, error)
+	// Create inserts a new consultation into the database
+	Create(ctx context.Context, consultation *models.Consultation) error
+
+	// GetByID retrieves a consultation by its ID
+	GetByID(ctx context.Context, id int) (*models.Consultation, error)
+
+	// GetByAppointmentID retrieves a consultation by its appointment ID
+	GetByAppointmentID(ctx context.Context, appointmentID int) (*models.Consultation, error)
+
+	// Update modifies an existing consultation
+	Update(ctx context.Context, consultation *models.Consultation) error
+
+	// Delete removes a consultation from the database
+	Delete(ctx context.Context, id int) error
+
+	// List retrieves consultations based on filter criteria with pagination
+	List(ctx context.Context, filter models.ConsultationFilter, offset, limit int) ([]*models.Consultation, error)
 }
 
-
 type HomeCareVisitRepository interface {
-    Create(ctx context.Context, visit *models.HomeCareVisit) error
-    Update(ctx context.Context, visit *models.HomeCareVisit) error
-    GetByID(ctx context.Context, id int) (*models.HomeCareVisit, error)
-    Delete(ctx context.Context, id int) error
-    List(ctx context.Context, filter models.HomeCareVisitFilter) ([]models.HomeCareVisit, error)
-    GetByPatientID(ctx context.Context, patientID int) ([]models.HomeCareVisit, error)
-    GetByProviderID(ctx context.Context, providerID int) ([]models.HomeCareVisit, error)
-    GetByDateRange(ctx context.Context, startDate, endDate time.Time) ([]models.HomeCareVisit, error)
+	Create(ctx context.Context, visit *models.HomeCareVisit) error
+	Update(ctx context.Context, visit *models.HomeCareVisit) error
+	GetByID(ctx context.Context, id int) (*models.HomeCareVisit, error)
+	Delete(ctx context.Context, id int) error
+	List(ctx context.Context, filter models.HomeCareVisitFilter) ([]models.HomeCareVisit, error)
+	GetByPatientID(ctx context.Context, patientID int) ([]models.HomeCareVisit, error)
+	GetByProviderID(ctx context.Context, providerID int) ([]models.HomeCareVisit, error)
+	GetByDateRange(ctx context.Context, startDate, endDate time.Time) ([]models.HomeCareVisit, error)
 }
 
 type PaymentRepository interface {
@@ -132,14 +128,14 @@ type PaymentRepository interface {
 }
 
 type ReviewRepository interface {
-    Create(ctx context.Context, review *Review) error
-    GetByID(ctx context.Context, id int) (*Review, error)
-    GetByDoctorID(ctx context.Context, doctorID int, limit, offset int) ([]*Review, error)
-    GetByHomeCareProviderID(ctx context.Context, providerID int, limit, offset int) ([]*Review, error)
-    GetReviewByID(ctx context.Context, id int) (*models.Review, error)  // Add this method
-    GetReviewsByDoctorID(ctx context.Context, doctorID int) ([]models.Review, error)
-    UpdateReview(ctx context.Context, review *models.Review) error  // Add this method
-    DeleteReview(ctx context.Context, id int) error  // Add this method
+	Create(ctx context.Context, review *Review) error
+	GetByID(ctx context.Context, id int) (*Review, error)
+	GetByDoctorID(ctx context.Context, doctorID int, limit, offset int) ([]*Review, error)
+	GetByHomeCareProviderID(ctx context.Context, providerID int, limit, offset int) ([]*Review, error)
+	GetReviewByID(ctx context.Context, id int) (*models.Review, error) // Add this method
+	GetReviewsByDoctorID(ctx context.Context, doctorID int) ([]models.Review, error)
+	UpdateReview(ctx context.Context, review *models.Review) error // Add this method
+	DeleteReview(ctx context.Context, id int) error                // Add this method
 }
 
 type ChatMessageRepository interface {
@@ -156,14 +152,13 @@ type NotificationRepository interface {
 	GetUnreadCount(ctx context.Context, userID int) (int, error)
 }
 
-
 // Structs representing database entities
 type User struct {
 	ID           int
 	Email        string
-    PasswordHash string
-	Name      	 string
-	Role      	 string
+	PasswordHash string
+	Name         string
+	Role         string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
@@ -186,17 +181,17 @@ type Doctor struct {
 	Latitude          float64
 	Longitude         float64
 	CreatedAt         time.Time // Add CreatedAt field
-    UpdatedAt         time.Time // Add UpdatedAt field
+	UpdatedAt         time.Time // Add UpdatedAt field
 }
 
 type Patient struct {
-	UserID                 int
-	DateOfBirth            time.Time
-	Gender                 string
-	Phone                  string
-	Address                string
-	EmergencyContactName   string
-	EmergencyContactPhone  string
+	UserID                int
+	DateOfBirth           time.Time
+	Gender                string
+	Phone                 string
+	Address               string
+	EmergencyContactName  string
+	EmergencyContactPhone string
 }
 
 type HomeCareProvider struct {
@@ -223,50 +218,48 @@ type ServiceType struct {
 }
 
 type DoctorAvailability struct {
-	ID         int
-	DoctorID   int
-	DayOfWeek  int
-	StartTime  time.Time
-	EndTime    time.Time
+	ID        int
+	DoctorID  int
+	DayOfWeek int
+	StartTime time.Time
+	EndTime   time.Time
 }
 
 type MedicalHistory struct {
-	ID             int
-	PatientID      int
-	ConditionName  string
-	DiagnosisDate  time.Time
-	Treatment      string
-	IsCurrent      bool
+	ID            int
+	PatientID     int
+	ConditionName string
+	DiagnosisDate time.Time
+	Treatment     string
+	IsCurrent     bool
 }
-
-
 
 // repository/repository.go
 type Appointment struct {
-    ID                  int
-    PatientID           int
-    ProviderType        string
-    DoctorID            *int
-    HomeCareProviderID  *int
-    AppointmentDate     time.Time
-    StartTime           time.Time
-    EndTime             time.Time
-    Status              string
-    CancellationReason  *string
-    CreatedAt           time.Time
-    UpdatedAt           time.Time
+	ID                 int
+	PatientID          int
+	ProviderType       string
+	DoctorID           *int
+	HomeCareProviderID *int
+	AppointmentDate    time.Time
+	StartTime          time.Time
+	EndTime            time.Time
+	Status             string
+	CancellationReason *string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 type Consultation struct {
-	ID               int       `json:"id" db:"id"`
-	PatientID       int       `json:"patient_id"`
-	DoctorID        int       `json:"doctor_id"`
-	AppointmentID   int       `json:"appointment_id" db:"appointment_id"`
-	ConsultationType string    `json:"consultation_type" db:"consultation_type"`
-	Status          string    `json:"status" db:"status"`
-	StartedAt       time.Time `json:"started_at" db:"started_at"`
-	CompletedAt     time.Time `json:"completed_at" db:"completed_at"`
-	Fee             float64   `json:"fee" db:"fee"`
+	ID                int       `json:"id" db:"id"`
+	PatientID         int       `json:"patient_id"`
+	DoctorID          int       `json:"doctor_id"`
+	AppointmentID     int       `json:"appointment_id" db:"appointment_id"`
+	ConsultationType  string    `json:"consultation_type" db:"consultation_type"`
+	Status            string    `json:"status" db:"status"`
+	StartedAt         time.Time `json:"started_at" db:"started_at"`
+	CompletedAt       time.Time `json:"completed_at" db:"completed_at"`
+	Fee               float64   `json:"fee" db:"fee"`
 }
 
 type HomeCareVisit struct {
@@ -281,27 +274,26 @@ type HomeCareVisit struct {
 }
 
 type Payment struct {
-    ID              int
-    Amount          float64
-    Status          string
-    PaymentDate     *time.Time
-    RefundDate      *time.Time
-    ConsultationID  int
-    HomeCareVisitID int
+	ID              int
+	Amount          float64
+	Status          string
+	PaymentDate     *time.Time
+	RefundDate      *time.Time
+	ConsultationID  int
+	HomeCareVisitID int
 }
 
-
 type Review struct {
-	ID                  int       `json:"id" db:"id"`
-	PatientID           int       `json:"patient_id" db:"patient_id"`
-	ReviewType          string    `json:"review_type" db:"review_type"`
-	ConsultationID      *int      `json:"consultation_id,omitempty" db:"consultation_id"`
-	HomeCareVisitID     *int      `json:"home_care_visit_id,omitempty" db:"home_care_visit_id"`
-	DoctorID            *int      `json:"doctor_id,omitempty" db:"doctor_id"`
-	HomeCareProviderID  *int      `json:"home_care_provider_id,omitempty" db:"home_care_provider_id"`
-	Rating              int       `json:"rating" db:"rating"`
-	Comment             string    `json:"comment" db:"comment"`
-	CreatedAt           time.Time `json:"created_at" db:"created_at"`
+	ID                 int       `json:"id" db:"id"`
+	PatientID          int       `json:"patient_id" db:"patient_id"`
+	ReviewType         string    `json:"review_type" db:"review_type"`
+	ConsultationID     *int      `json:"consultation_id,omitempty" db:"consultation_id"`
+	HomeCareVisitID    *int      `json:"home_care_visit_id,omitempty" db:"home_care_visit_id"`
+	DoctorID           *int      `json:"doctor_id,omitempty" db:"doctor_id"`
+	HomeCareProviderID *int      `json:"home_care_provider_id,omitempty" db:"home_care_provider_id"`
+	Rating             int       `json:"rating" db:"rating"`
+	Comment            string    `json:"comment" db:"comment"`
+	CreatedAt          time.Time `json:"created_at" db:"created_at"`
 }
 
 type ChatMessage struct {

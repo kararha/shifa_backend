@@ -165,14 +165,19 @@ CREATE TABLE notifications (
 -- Consultations table
 CREATE TABLE consultations (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    appointment_id INT NOT NULL,
-    consultation_type ENUM('online', 'home_visit', 'home_care') NOT NULL,
-    status ENUM('requested', 'in_progress', 'completed') NOT NULL,
+    patient_id INT NOT NULL,
+    doctor_id INT NOT NULL,
+    status ENUM('requested', 'in_progress', 'completed', 'cancelled') NOT NULL DEFAULT 'requested',
     started_at DATETIME,
     completed_at DATETIME,
     fee DECIMAL(10, 2),
-    FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
-    INDEX idx_consultation_status (status)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_id) REFERENCES users(id),
+    FOREIGN KEY (doctor_id) REFERENCES users(id),
+    INDEX idx_consultation_status (status),
+    INDEX idx_patient_doctor (patient_id, doctor_id),
+    INDEX idx_dates (started_at, completed_at)
 );
 -- Relationship: One-to-One with appointments, consultation_details, and payments
 
@@ -192,14 +197,16 @@ CREATE TABLE consultation_details (
 -- Home care visits table
 CREATE TABLE home_care_visits (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    appointment_id INT NOT NULL,
+    patient_id INT NOT NULL,
+    provider_id INT NOT NULL,
     address TEXT NOT NULL,
     latitude DECIMAL(10, 8) NOT NULL,
     longitude DECIMAL(11, 8) NOT NULL,
     duration_hours DECIMAL(4, 2) NOT NULL,
     special_requirements TEXT,
     status ENUM('scheduled', 'in_progress', 'completed', 'cancelled') DEFAULT 'scheduled',
-    FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
+    FOREIGN KEY (patient_id) REFERENCES patients(user_id),
+    FOREIGN KEY (provider_id) REFERENCES home_care_providers(user_id),
     INDEX idx_location (latitude, longitude)
 );
 -- Relationship: One-to-One with appointments

@@ -11,14 +11,23 @@ import (
 )
 
 type AppointmentService struct {
-    appointmentRepo repository.AppointmentRepository
-    logger          *logrus.Logger
+    appointmentRepo      repository.AppointmentRepository
+    doctorRepo          repository.DoctorRepository
+    homeCareProviderRepo repository.HomeCareProviderRepository
+    logger              *logrus.Logger
 }
 
-func NewAppointmentService(appointmentRepo repository.AppointmentRepository, logger *logrus.Logger) *AppointmentService {
+func NewAppointmentService(
+    appointmentRepo repository.AppointmentRepository,
+    doctorRepo repository.DoctorRepository,
+    homeCareProviderRepo repository.HomeCareProviderRepository,
+    logger *logrus.Logger,
+) *AppointmentService {
     return &AppointmentService{
-        appointmentRepo: appointmentRepo,
-        logger:          logger,
+        appointmentRepo:      appointmentRepo,
+        doctorRepo:          doctorRepo,
+        homeCareProviderRepo: homeCareProviderRepo,
+        logger:              logger,
     }
 }
 
@@ -51,9 +60,32 @@ func (s *AppointmentService) validateAppointment(appointment *models.Appointment
 }
 
 func (s *AppointmentService) CreateAppointment(ctx context.Context, appointment *models.Appointment) (*models.Appointment, error) {
+    // Validate basic appointment data
     if err := s.validateAppointment(appointment); err != nil {
         return nil, err
     }
+
+    // Validate provider exists based on provider type
+    if appointment.ProviderType == "doctor" && appointment.DoctorID != nil {
+        // Check if doctor exists
+        doctor, err := s.doctorRepo.GetByID(ctx, *appointment.DoctorID)
+        if (err != nil) {
+            return nil, fmt.Errorf("invalid doctor_id: %w", err)
+        }
+        if !doctor.IsAvailable || doctor.Status != "active" {
+            return nil, fmt.Errorf("doctor is not available")
+        }
+    } else if appointment.ProviderType == "home_care_provider" && appointment.HomeCareProviderID != nil {
+        // Check if home care provider exists
+        provider, err := s.homeCareProviderRepo.GetByID(ctx, *appointment.HomeCareProviderID)
+        if err != nil {
+            return nil, fmt.Errorf("invalid home_care_provider_id: %w", err)
+        }
+        if !provider.IsAvailable || provider.Status != "active" {
+            return nil, fmt.Errorf("home care provider is not available")
+        }
+    }
+
     err := s.appointmentRepo.Create(ctx, appointment)
     if err != nil {
         s.logger.WithError(err).Error("Failed to create appointment")

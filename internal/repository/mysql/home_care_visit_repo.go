@@ -20,21 +20,32 @@ func NewHomeVisitRepo(db *sql.DB) *HomeVisitRepo {
 // Create inserts a new home care visit into the database
 func (r *HomeVisitRepo) Create(ctx context.Context, visit *models.HomeCareVisit) error {
     query := `
-        INSERT INTO home_care_visits (appointment_id, address, latitude, longitude, 
-            duration_hours, special_requirements, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO home_care_visits (
+            patient_id, provider_id, address, latitude, longitude,
+            duration_hours, special_requirements, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `
+    result, err := r.db.ExecContext(ctx, query,
+        visit.PatientID, visit.ProviderID, visit.Address,
+        visit.Latitude, visit.Longitude, visit.DurationHours,
+        visit.SpecialRequirements, visit.Status)
+    if err != nil {
+        return err
+    }
 
-    _, err := r.db.ExecContext(ctx, query, 
-        visit.AppointmentID, visit.Address, visit.Latitude, visit.Longitude,
-        visit.DurationHours, visit.SpecialRequirements, visit.Status)
-    return err
+    id, err := result.LastInsertId()
+    if err != nil {
+        return err
+    }
+
+    visit.ID = int(id)
+    return nil
 }
 
 // GetByID retrieves a home care visit by its ID
 func (r *HomeVisitRepo) GetByID(ctx context.Context, id int) (*models.HomeCareVisit, error) {
     query := `
-        SELECT id, appointment_id, address, latitude, longitude, 
+        SELECT id, patient_id, provider_id, address, latitude, longitude, 
             duration_hours, special_requirements, status
         FROM home_care_visits
         WHERE id = ?
@@ -42,7 +53,7 @@ func (r *HomeVisitRepo) GetByID(ctx context.Context, id int) (*models.HomeCareVi
 
     var visit models.HomeCareVisit
     err := r.db.QueryRowContext(ctx, query, id).Scan(
-        &visit.ID, &visit.AppointmentID, &visit.Address, &visit.Latitude, &visit.Longitude,
+        &visit.ID, &visit.PatientID, &visit.ProviderID, &visit.Address, &visit.Latitude, &visit.Longitude,
         &visit.DurationHours, &visit.SpecialRequirements, &visit.Status)
     if err != nil {
         return nil, err
@@ -54,16 +65,21 @@ func (r *HomeVisitRepo) GetByID(ctx context.Context, id int) (*models.HomeCareVi
 // List retrieves a list of home care visits with optional filtering
 func (r *HomeVisitRepo) List(ctx context.Context, filter models.HomeCareVisitFilter) ([]models.HomeCareVisit, error) {
     query := `
-        SELECT id, appointment_id, address, latitude, longitude, 
-            duration_hours, special_requirements, status
+        SELECT id, patient_id, provider_id, address, latitude, longitude,
+               duration_hours, special_requirements, status
         FROM home_care_visits
         WHERE 1=1
     `
     var args []interface{}
 
-    if filter.AppointmentID != 0 {
-        query += " AND appointment_id = ?"
-        args = append(args, filter.AppointmentID)
+    if filter.PatientID != 0 {
+        query += " AND patient_id = ?"
+        args = append(args, filter.PatientID)
+    }
+
+    if filter.ProviderID != 0 {
+        query += " AND provider_id = ?"
+        args = append(args, filter.ProviderID)
     }
 
     if filter.Status != "" {
@@ -80,7 +96,7 @@ func (r *HomeVisitRepo) List(ctx context.Context, filter models.HomeCareVisitFil
     var visits []models.HomeCareVisit // Change to slice of values
     for rows.Next() {
         var visit models.HomeCareVisit
-        err := rows.Scan(&visit.ID, &visit.AppointmentID, &visit.Address, &visit.Latitude, &visit.Longitude,
+        err := rows.Scan(&visit.ID, &visit.PatientID, &visit.ProviderID, &visit.Address, &visit.Latitude, &visit.Longitude,
             &visit.DurationHours, &visit.SpecialRequirements, &visit.Status)
         if err != nil {
             return nil, err
@@ -116,19 +132,32 @@ func (r *HomeVisitRepo) Delete(ctx context.Context, id int) error {
     return nil
 }
 
+// Update modifies an existing home care visit in the database
+func (r *HomeVisitRepo) Update(ctx context.Context, visit *models.HomeCareVisit) error {
+    query := `
+        UPDATE home_care_visits
+        SET patient_id = ?, provider_id = ?, address = ?, latitude = ?, longitude = ?, 
+            duration_hours = ?, special_requirements = ?, status = ?
+        WHERE id = ?
+    `
 
-// GetByDateRange retrieves home care visits within the specified date range
+    _, err := r.db.ExecContext(ctx, query, 
+        visit.PatientID, visit.ProviderID, visit.Address, visit.Latitude, visit.Longitude,
+        visit.DurationHours, visit.SpecialRequirements, visit.Status, visit.ID)
+    return err
+}
+
+// GetByDateRange retrieves home care visits within a specified date range
 func (r *HomeVisitRepo) GetByDateRange(ctx context.Context, startDate, endDate time.Time) ([]models.HomeCareVisit, error) {
     query := `
-        SELECT id, appointment_id, address, latitude, longitude, 
-            duration_hours, special_requirements, status
+        SELECT id, patient_id, provider_id, address, latitude, longitude,
+               duration_hours, special_requirements, status
         FROM home_care_visits
-        WHERE appointment_date BETWEEN ? AND ?
-        ORDER BY appointment_date
+        WHERE created_at BETWEEN ? AND ?
     `
 
     rows, err := r.db.QueryContext(ctx, query, startDate, endDate)
-    if err != nil {
+    if (err != nil) {
         return nil, err
     }
     defer rows.Close()
@@ -136,44 +165,12 @@ func (r *HomeVisitRepo) GetByDateRange(ctx context.Context, startDate, endDate t
     var visits []models.HomeCareVisit
     for rows.Next() {
         var visit models.HomeCareVisit
-        err := rows.Scan(&visit.ID, &visit.AppointmentID, &visit.Address, &visit.Latitude, &visit.Longitude,
-            &visit.DurationHours, &visit.SpecialRequirements, &visit.Status)
+        err := rows.Scan(
+            &visit.ID, &visit.PatientID, &visit.ProviderID, &visit.Address,
+            &visit.Latitude, &visit.Longitude, &visit.DurationHours,
+            &visit.SpecialRequirements, &visit.Status,
+        )
         if err != nil {
-            return nil, err
-        }
-        visits = append(visits, visit) // Append value instead of pointer
-    }
-
-    if err = rows.Err(); err != nil {
-        return nil, err
-    }
-
-    return visits, nil
-}
-
-
-// GetByPatientID retrieves home care visits for a specific patient ID
-func (r *HomeVisitRepo) GetByPatientID(ctx context.Context, patientID int) ([]models.HomeCareVisit, error) {
-    query := `
-        SELECT hv.id, hv.appointment_id, hv.address, hv.latitude, hv.longitude, 
-               hv.duration_hours, hv.special_requirements, hv.status
-        FROM home_care_visits hv
-        INNER JOIN appointments a ON hv.appointment_id = a.id
-        WHERE a.patient_id = ?
-        ORDER BY hv.id
-    `
-
-    rows, err := r.db.QueryContext(ctx, query, patientID)
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
-
-    var visits []models.HomeCareVisit
-    for rows.Next() {
-        var visit models.HomeCareVisit
-        if err := rows.Scan(&visit.ID, &visit.AppointmentID, &visit.Address, &visit.Latitude, &visit.Longitude,
-            &visit.DurationHours, &visit.SpecialRequirements, &visit.Status); err != nil {
             return nil, err
         }
         visits = append(visits, visit)
@@ -186,15 +183,51 @@ func (r *HomeVisitRepo) GetByPatientID(ctx context.Context, patientID int) ([]mo
     return visits, nil
 }
 
-// GetByProviderID retrieves home care visits for a specific provider ID
+// GetByPatientID retrieves all home care visits for a specific patient
+func (r *HomeVisitRepo) GetByPatientID(ctx context.Context, patientID int) ([]models.HomeCareVisit, error) {
+    query := `
+        SELECT id, patient_id, provider_id, address, latitude, longitude,
+               duration_hours, special_requirements, status
+        FROM home_care_visits
+        WHERE patient_id = ?
+        ORDER BY id DESC
+    `
+
+    rows, err := r.db.QueryContext(ctx, query, patientID)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var visits []models.HomeCareVisit
+    for rows.Next() {
+        var visit models.HomeCareVisit
+        err := rows.Scan(
+            &visit.ID, &visit.PatientID, &visit.ProviderID, &visit.Address,
+            &visit.Latitude, &visit.Longitude, &visit.DurationHours,
+            &visit.SpecialRequirements, &visit.Status,
+        )
+        if err != nil {
+            return nil, err
+        }
+        visits = append(visits, visit)
+    }
+
+    if err = rows.Err(); err != nil {
+        return nil, err
+    }
+
+    return visits, nil
+}
+
+// GetByProviderID retrieves all home care visits for a specific provider
 func (r *HomeVisitRepo) GetByProviderID(ctx context.Context, providerID int) ([]models.HomeCareVisit, error) {
     query := `
-        SELECT hv.id, hv.appointment_id, hv.address, hv.latitude, hv.longitude, 
-               hv.duration_hours, hv.special_requirements, hv.status
-        FROM home_care_visits hv
-        INNER JOIN appointments a ON hv.appointment_id = a.id
-        WHERE a.provider_id = ?
-        ORDER BY hv.id
+        SELECT id, patient_id, provider_id, address, latitude, longitude,
+               duration_hours, special_requirements, status
+        FROM home_care_visits
+        WHERE provider_id = ?
+        ORDER BY id DESC
     `
 
     rows, err := r.db.QueryContext(ctx, query, providerID)
@@ -206,12 +239,15 @@ func (r *HomeVisitRepo) GetByProviderID(ctx context.Context, providerID int) ([]
     var visits []models.HomeCareVisit
     for rows.Next() {
         var visit models.HomeCareVisit
-        err := rows.Scan(&visit.ID, &visit.AppointmentID, &visit.Address, &visit.Latitude, &visit.Longitude,
-            &visit.DurationHours, &visit.SpecialRequirements, &visit.Status)
+        err := rows.Scan(
+            &visit.ID, &visit.PatientID, &visit.ProviderID, &visit.Address,
+            &visit.Latitude, &visit.Longitude, &visit.DurationHours,
+            &visit.SpecialRequirements, &visit.Status,
+        )
         if err != nil {
             return nil, err
         }
-        visits = append(visits, visit) // Append value instead of pointer
+        visits = append(visits, visit)
     }
 
     if err = rows.Err(); err != nil {
@@ -219,20 +255,4 @@ func (r *HomeVisitRepo) GetByProviderID(ctx context.Context, providerID int) ([]
     }
 
     return visits, nil
-}
-
-
-// Update modifies an existing home care visit in the database
-func (r *HomeVisitRepo) Update(ctx context.Context, visit *models.HomeCareVisit) error {
-    query := `
-        UPDATE home_care_visits
-        SET appointment_id = ?, address = ?, latitude = ?, longitude = ?, 
-            duration_hours = ?, special_requirements = ?, status = ?
-        WHERE id = ?
-    `
-
-    _, err := r.db.ExecContext(ctx, query, 
-        visit.AppointmentID, visit.Address, visit.Latitude, visit.Longitude,
-        visit.DurationHours, visit.SpecialRequirements, visit.Status, visit.ID)
-    return err
 }

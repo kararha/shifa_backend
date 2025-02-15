@@ -205,3 +205,111 @@ func (r *DoctorRepo) SearchDoctors(ctx context.Context, params models.DoctorSear
 
     return results, nil
 }
+
+// GetByID retrieves a doctor by their ID
+func (r *DoctorRepo) GetByID(ctx context.Context, id int) (*models.Doctor, error) {
+    query := `
+        SELECT user_id, specialty, service_type_id, license_number, experience_years, 
+            qualifications, achievements, bio, profile_picture_url, consultation_fee, rating, 
+            is_verified, is_available, status, latitude, longitude
+        FROM doctors
+        WHERE user_id = ?
+    `
+
+    var doctor models.Doctor
+    err := r.db.QueryRowContext(ctx, query, id).Scan(
+        &doctor.UserID, &doctor.Specialty, &doctor.ServiceTypeID, &doctor.LicenseNumber,
+        &doctor.ExperienceYears, &doctor.Qualifications, &doctor.Achievements, &doctor.Bio,
+        &doctor.ProfilePictureURL, &doctor.ConsultationFee, &doctor.Rating, &doctor.IsVerified,
+        &doctor.IsAvailable, &doctor.Status, &doctor.Latitude, &doctor.Longitude,
+    )
+
+    if err != nil {
+        if errors.Is(err, sql.ErrNoRows) {
+            return nil, errors.New("doctor not found")
+        }
+        return nil, err
+    }
+
+    return &doctor, nil
+}
+
+// GetByServiceType retrieves doctors by service type with pagination
+func (r *DoctorRepo) GetByServiceType(ctx context.Context, serviceTypeID int, limit, offset int) ([]*models.Doctor, error) {
+    query := `
+        SELECT user_id, specialty, service_type_id, license_number, experience_years, 
+            qualifications, achievements, bio, profile_picture_url, consultation_fee, rating, 
+            is_verified, is_available, status, latitude, longitude
+        FROM doctors
+        WHERE service_type_id = ?
+        ORDER BY rating DESC
+        LIMIT ? OFFSET ?
+    `
+
+    rows, err := r.db.QueryContext(ctx, query, serviceTypeID, limit, offset)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var doctors []*models.Doctor
+    for rows.Next() {
+        var doctor models.Doctor
+        err := rows.Scan(
+            &doctor.UserID, &doctor.Specialty, &doctor.ServiceTypeID, &doctor.LicenseNumber,
+            &doctor.ExperienceYears, &doctor.Qualifications, &doctor.Achievements, &doctor.Bio,
+            &doctor.ProfilePictureURL, &doctor.ConsultationFee, &doctor.Rating, &doctor.IsVerified,
+            &doctor.IsAvailable, &doctor.Status, &doctor.Latitude, &doctor.Longitude,
+        )
+        if err != nil {
+            return nil, err
+        }
+        doctors = append(doctors, &doctor)
+    }
+
+    if err := rows.Err(); err != nil {
+        return nil, err
+    }
+
+    return doctors, nil
+}
+
+// GetBySpecialty retrieves doctors by specialty with pagination
+func (r *DoctorRepo) GetBySpecialty(ctx context.Context, specialty string, limit, offset int) ([]*models.Doctor, error) {
+    query := `
+        SELECT user_id, specialty, service_type_id, license_number, experience_years, 
+            qualifications, achievements, bio, profile_picture_url, consultation_fee, rating, 
+            is_verified, is_available, status, latitude, longitude
+        FROM doctors
+        WHERE specialty = ?
+        ORDER BY rating DESC
+        LIMIT ? OFFSET ?
+    `
+
+    rows, err := r.db.QueryContext(ctx, query, specialty, limit, offset)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var doctors []*models.Doctor
+    for rows.Next() {
+        var doctor models.Doctor
+        err := rows.Scan(
+            &doctor.UserID, &doctor.Specialty, &doctor.ServiceTypeID, &doctor.LicenseNumber,
+            &doctor.ExperienceYears, &doctor.Qualifications, &doctor.Achievements, &doctor.Bio,
+            &doctor.ProfilePictureURL, &doctor.ConsultationFee, &doctor.Rating, &doctor.IsVerified,
+            &doctor.IsAvailable, &doctor.Status, &doctor.Latitude, &doctor.Longitude,
+        )
+        if err != nil {
+            return nil, err
+        }
+        doctors = append(doctors, &doctor)
+    }
+
+    if err := rows.Err(); err != nil {
+        return nil, err
+    }
+
+    return doctors, nil
+}

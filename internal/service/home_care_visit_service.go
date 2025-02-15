@@ -4,7 +4,7 @@ import (
     "context"
     "errors"
     "fmt"
-    "time"
+    // "time"
     "shifa/internal/models"
     "shifa/internal/repository"
     "github.com/sirupsen/logrus" // Make sure to import Logrus
@@ -24,9 +24,14 @@ func NewHomeCareVisitService(repo repository.HomeCareVisitRepository, logger *lo
 
 // ScheduleHomeCareVisit creates a new home care visit
 func (s *HomeCareVisitService) ScheduleHomeCareVisit(ctx context.Context, visit *models.HomeCareVisit) error {
-    if visit.PatientID == 0 || visit.ProviderID == 0 || visit.VisitDate.IsZero() {
+    if visit.PatientID == 0 || visit.ProviderID == 0 || visit.Address == "" {
         s.Logger.Warn("Invalid home care visit data", logrus.Fields{"visit": visit})
-        return errors.New("invalid home care visit data")
+        return errors.New("invalid home care visit data: missing required fields")
+    }
+
+    // Set default status if not provided
+    if visit.Status == "" {
+        visit.Status = "scheduled"
     }
 
     err := s.Repo.Create(ctx, visit)
@@ -86,60 +91,4 @@ func (s *HomeCareVisitService) ListHomeCareVisits(ctx context.Context, filter mo
     }
     s.Logger.Info("Retrieved home care visits", logrus.Fields{"count": len(visits)})
     return visits, nil
-}
-
-// GetHomeCareVisitsByPatient returns visits for a specific patient
-func (s *HomeCareVisitService) GetHomeCareVisitsByPatient(ctx context.Context, patientID int) ([]models.HomeCareVisit, error) {
-    visits, err := s.Repo.GetByPatientID(ctx, patientID)
-    if err != nil {
-        s.Logger.Error("Failed to get home care visits by patient", logrus.Fields{"error": err, "patientID": patientID})
-        return nil, fmt.Errorf("failed to get home care visits by patient: %w", err)
-    }
-    s.Logger.Info("Retrieved home care visits for patient", logrus.Fields{"patientID": patientID, "count": len(visits)})
-    return visits, nil
-}
-
-// GetHomeCareVisitsByProvider returns visits for a specific provider
-func (s *HomeCareVisitService) GetHomeCareVisitsByProvider(ctx context.Context, providerID int) ([]models.HomeCareVisit, error) {
-    visits, err := s.Repo.GetByProviderID(ctx, providerID)
-    if err != nil {
-        s.Logger.Error("Failed to get home care visits by provider", logrus.Fields{"error": err, "providerID": providerID})
-        return nil, fmt.Errorf("failed to get home care visits by provider: %w", err)
-    }
-    s.Logger.Info("Retrieved home care visits for provider", logrus.Fields{"providerID": providerID, "count": len(visits)})
-    return visits, nil
-}
-
-// GetHomeCareVisitsByDateRange returns visits within a specific date range
-func (s *HomeCareVisitService) GetHomeCareVisitsByDateRange(ctx context.Context, startDate, endDate time.Time) ([]models.HomeCareVisit, error) {
-    visits, err := s.Repo.GetByDateRange(ctx, startDate, endDate)
-    if err != nil {
-        s.Logger.Error("Failed to get home care visits by date range", logrus.Fields{"error": err})
-        return nil, fmt.Errorf("failed to get home care visits by date range: %w", err)
-    }
-    s.Logger.Info("Retrieved home care visits by date range", logrus.Fields{"startDate": startDate, "endDate": endDate, "count": len(visits)})
-    return visits, nil
-}
-
-// CancelVisit cancels a specific home care visit
-func (s *HomeCareVisitService) CancelVisit(ctx context.Context, visitID int) error {
-    visit, err := s.Repo.GetByID(ctx, visitID)
-    if err != nil {
-        s.Logger.Error("Failed to get home care visit for cancellation", logrus.Fields{"error": err, "visitID": visitID})
-        return fmt.Errorf("failed to cancel home care visit: %w", err)
-    }
-
-    if visit.Status == "cancelled" {
-        return errors.New("visit is already cancelled")
-    }
-
-    visit.Status = "cancelled"
-    err = s.Repo.Update(ctx, visit)
-    if err != nil {
-        s.Logger.Error("Failed to update home care visit status", logrus.Fields{"error": err, "visitID": visitID})
-        return fmt.Errorf("failed to cancel home care visit: %w", err)
-    }
-
-    s.Logger.Info("Home care visit cancelled successfully", logrus.Fields{"visitID": visitID})
-    return nil
 }
