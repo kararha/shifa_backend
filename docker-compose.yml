@@ -4,22 +4,21 @@ services:
   mysql:
     image: mysql:8.0
     environment:
-      - MYSQL_ROOT_PASSWORD=  # Set a root password
-      - MYSQL_DATABASE=shifa
-      - MYSQL_USER=root
-      - MYSQL_PASSWORD=       # Set a password for the root user
+      - MYSQL_ALLOW_EMPTY_PASSWORD=true    # Allow empty root password
+      - MYSQL_DATABASE=shifa               # Create this database on startup
     ports:
-      - "3307:3306"  # Map to 3307 on the host to avoid conflicts
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root"]
       interval: 5s
-      timeout: 5s
-      retries: 5
-      start_period: 10s  # Allow extra time for MySQL to initialize
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    command: ['mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci']
 
   go-app:
     build:
@@ -27,17 +26,19 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8888:8888"
-    environment:
-      - DB_HOST=mysql
-      - DB_USER=root
-      - DB_PASSWORD=  # Match the MySQL root password
-      - DB_NAME=shifa
-      - DB_PORT=3306
+    env_file:
+      - .env  # Load environment variables from .env file
     depends_on:
       mysql:
         condition: service_healthy
     networks:
       - app-network
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
 
   ai-service:
     build:
@@ -45,6 +46,19 @@ services:
       dockerfile: Dockerfile.python
     ports:
       - "8000:8000"
+    networks:
+      - app-network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "8080:80"
+    environment:
+      - PMA_HOST=mysql
+      - PMA_USER=root
+      - PMA_PASSWORD=
+    depends_on:
+      - mysql
     networks:
       - app-network
 

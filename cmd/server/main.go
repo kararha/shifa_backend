@@ -1,4 +1,3 @@
-// 1. Using a separate goroutine to handle the shutdown
 package main
 
 import (
@@ -24,10 +23,15 @@ func main() {
         PrettyPrint:    true,
     })
 
-    // Hardcoded configuration
-    serverPort := 8888
-    databaseURL := "root:@tcp(localhost:3306)/shfia?parseTime=true"
-    
+    // Read environment variables
+    dbHost := os.Getenv("DB_HOST")
+    dbUser := os.Getenv("DB_USER")
+    dbPassword := os.Getenv("DB_PASSWORD")
+    dbName := os.Getenv("DB_NAME")
+
+    // Construct the connection string
+    databaseURL := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s?parseTime=true", dbUser, dbPassword, dbHost, dbName)
+
     // JWT Secret - consider moving this to environment variable
     jwtSecret := "your-secret-key-here"
 
@@ -56,7 +60,7 @@ func main() {
 
     // Create HTTP server with timeouts
     srv := &http.Server{
-        Addr:         fmt.Sprintf(":%d", serverPort),
+        Addr:         fmt.Sprintf(":%d", 8888),
         Handler:      corsHandler,
         ReadTimeout:  15 * time.Second,
         WriteTimeout: 15 * time.Second,
@@ -66,7 +70,7 @@ func main() {
     // Start server in a goroutine
     go func() {
         log.WithFields(logrus.Fields{
-            "port": serverPort,
+            "port": 8888,
             "addr": srv.Addr,
         }).Info("Starting server")
 

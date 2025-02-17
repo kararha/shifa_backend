@@ -1,35 +1,50 @@
 package config
 
 import (
-    "os"
-    "strconv"
+	"os"
+	"strconv"
+
+	"github.com/joho/godotenv"
+	"github.com/sirupsen/logrus"
 )
 
 type Config struct {
-    JWTSecret    string
-    ServerPort   int
-    DatabaseURL  string
-    LogLevel     string
-    LogFormat    string
+	DBHost     string
+	DBUser     string
+	DBPassword string
+	DBName     string
+	ServerPort int
+	LogLevel   logrus.Level
+	LogFormat  string
+	JWTSecret  string
 }
 
-func Load() (*Config, error) {
-    port, err := strconv.Atoi(getEnvOrDefault("SERVER_PORT", "8080"))
-    if err != nil {
-        return nil, err
-    }
+func LoadConfig() (*Config, error) {
+	err := godotenv.Load()
+	if err != nil {
+		logrus.Warn("Error loading .env file: %v", err)
+	}
 
-    return &Config{
-        ServerPort:  port,
-        DatabaseURL: getEnvOrDefault("DATABASE_URL", "root:@tcp(localhost:3306)/shifa?parseTime=true"),
-        LogLevel:   getEnvOrDefault("LOG_LEVEL", "info"),
-        LogFormat:  getEnvOrDefault("LOG_FORMAT", "json"),
-    }, nil
-}
+	logLevelStr := os.Getenv("LOG_LEVEL")
+	logLevel, err := logrus.ParseLevel(logLevelStr)
+	if err != nil {
+		logLevel = logrus.InfoLevel
+	}
 
-func getEnvOrDefault(key, defaultValue string) string {
-    if value := os.Getenv(key); value != "" {
-        return value
-    }
-    return defaultValue
+	serverPortStr := os.Getenv("SERVER_PORT")
+	serverPort, err := strconv.Atoi(serverPortStr)
+	if err != nil {
+		serverPort = 8888
+	}
+
+	return &Config{
+		DBHost:     os.Getenv("DB_HOST"),
+		DBUser:     os.Getenv("DB_USER"),
+		DBPassword: os.Getenv("DB_PASSWORD"),
+		DBName:     os.Getenv("DB_NAME"),
+		ServerPort: serverPort,
+		LogLevel:   logLevel,
+		LogFormat:  os.Getenv("LOG_FORMAT"),
+		JWTSecret:  os.Getenv("JWT_SECRET"),
+	}, nil
 }
