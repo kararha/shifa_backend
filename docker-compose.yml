@@ -5,7 +5,7 @@ services:
     image: mysql:8.0
     environment:
       - MYSQL_ALLOW_EMPTY_PASSWORD=true    # Allow empty root password
-      - MYSQL_DATABASE=shifa               # Create this database on startup
+      - MYSQL_DATABASE=shfia               # Create this database on startup
     ports:
       - "3307:3306"
     volumes:

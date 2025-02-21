@@ -24,13 +24,13 @@ func main() {
     })
 
     // Read environment variables
-    dbHost := os.Getenv("DB_HOST")
-    dbUser := os.Getenv("DB_USER")
-    dbPassword := os.Getenv("DB_PASSWORD")
-    dbName := os.Getenv("DB_NAME")
+    // dbHost := os.Getenv("DB_HOST")
+    // dbUser := os.Getenv("DB_USER")
+    // dbPassword := os.Getenv("DB_PASSWORD")
+    // dbName := os.Getenv("DB_NAME")
 
     // Construct the connection string
-    databaseURL := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s?parseTime=true", dbUser, dbPassword, dbHost, dbName)
+    databaseURL := "root:@tcp(localhost:3306)/shfia?parseTime=true"
 
     // JWT Secret - consider moving this to environment variable
     jwtSecret := "your-secret-key-here"
