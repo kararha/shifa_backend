@@ -3,17 +3,60 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 	"shifa/internal/models"
 	"shifa/internal/service"
+	"strconv"
+
+	"github.com/gorilla/mux"
 )
 
 type ReviewHandler struct {
-	service service.ReviewService
+	reviewService service.ReviewService
 }
 
 func NewReviewHandler(service service.ReviewService) *ReviewHandler {
-	return &ReviewHandler{service: service}
+	return &ReviewHandler{reviewService: service}
+}
+
+// ListReviews handles both doctor and provider reviews
+func (h *ReviewHandler) ListReviews(w http.ResponseWriter, r *http.Request) {
+	// Get query parameters
+	doctorIDStr := r.URL.Query().Get("doctor_id")
+	providerIDStr := r.URL.Query().Get("home_care_provider_id")
+
+	// Set default page and pageSize
+	page := 1
+	pageSize := 10
+
+	var reviews interface{}
+	var err error
+
+	if doctorIDStr != "" {
+		doctorID, err := strconv.Atoi(doctorIDStr)
+		if err != nil {
+			http.Error(w, "Invalid doctor ID", http.StatusBadRequest)
+			return
+		}
+		reviews, err = h.reviewService.GetReviewsByDoctorID(r.Context(), doctorID, page, pageSize)
+	} else if providerIDStr != "" {
+		providerID, err := strconv.Atoi(providerIDStr)
+		if err != nil {
+			http.Error(w, "Invalid provider ID", http.StatusBadRequest)
+			return
+		}
+		reviews, err = h.reviewService.GetReviewsByHomeCareProviderID(r.Context(), providerID, page, pageSize)
+	} else {
+		http.Error(w, "Missing doctor_id or home_care_provider_id parameter", http.StatusBadRequest)
+		return
+	}
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(reviews)
 }
 
 func (h *ReviewHandler) CreateReview(w http.ResponseWriter, r *http.Request) {
@@ -23,73 +66,35 @@ func (h *ReviewHandler) CreateReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Call the service to create the review
-	err := h.service.CreateReview(r.Context(), &review)
-	if err != nil {
+	if err := h.reviewService.CreateReview(r.Context(), &review); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Respond with the created review (or just a success message)
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(review) // Optionally return the review
+	json.NewEncoder(w).Encode(review)
 }
 
 func (h *ReviewHandler) GetReview(w http.ResponseWriter, r *http.Request) {
-	idStr := r.URL.Query().Get("id")
-	id, err := strconv.Atoi(idStr)
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
 		http.Error(w, "Invalid review ID", http.StatusBadRequest)
 		return
 	}
 
-	review, err := h.service.GetReviewByID(r.Context(), id)
+	review, err := h.reviewService.GetReviewByID(r.Context(), id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(review)
 }
 
-func (h *ReviewHandler) ListReviews(w http.ResponseWriter, r *http.Request) {
-    // Parse doctorID
-    doctorIDStr := r.URL.Query().Get("doctorId")
-    doctorID, err := strconv.Atoi(doctorIDStr)
-    if err != nil {
-        http.Error(w, "Invalid doctor ID", http.StatusBadRequest)
-        return
-    }
-
-    // Parse pagination parameters
-    pageStr := r.URL.Query().Get("page")
-    pageSizeStr := r.URL.Query().Get("pageSize")
-
-    page, err := strconv.Atoi(pageStr)
-    if err != nil || page < 1 {
-        page = 1 // Default to first page if not specified or invalid
-    }
-
-    pageSize, err := strconv.Atoi(pageSizeStr)
-    if err != nil || pageSize < 1 {
-        pageSize = 10 // Default to 10 items per page if not specified or invalid
-    }
-
-    reviews, err := h.service.GetReviewsByDoctorID(r.Context(), doctorID, page, pageSize)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(reviews)
-}
-
 func (h *ReviewHandler) UpdateReview(w http.ResponseWriter, r *http.Request) {
-	idStr := r.URL.Query().Get("id")
-	id, err := strconv.Atoi(idStr)
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
 		http.Error(w, "Invalid review ID", http.StatusBadRequest)
 		return
@@ -102,25 +107,24 @@ func (h *ReviewHandler) UpdateReview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	review.ID = id
-	err = h.service.UpdateReview(r.Context(), &review)
-	if err != nil {
+	if err := h.reviewService.UpdateReview(r.Context(), &review); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(review) // Optionally return the updated review
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(review)
 }
 
 func (h *ReviewHandler) DeleteReview(w http.ResponseWriter, r *http.Request) {
-	idStr := r.URL.Query().Get("id")
-	id, err := strconv.Atoi(idStr)
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
 		http.Error(w, "Invalid review ID", http.StatusBadRequest)
 		return
 	}
 
-	if err := h.service.DeleteReview(r.Context(), id); err != nil {
+	if err := h.reviewService.DeleteReview(r.Context(), id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
