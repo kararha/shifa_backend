@@ -66,6 +66,22 @@ func (h *ReviewHandler) CreateReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate and set review type based on IDs
+	if review.DoctorID != nil && *review.DoctorID != 0 {
+		review.ReviewType = "consultation"
+		// Clear other ID fields
+		review.HomeCareProviderID = nil
+		review.HomeCareVisitID = nil
+	} else if review.HomeCareProviderID != nil && *review.HomeCareProviderID != 0 {
+		review.ReviewType = "home_care"
+		// Clear other ID fields
+		review.DoctorID = nil
+		review.ConsultationID = nil
+	} else {
+		http.Error(w, "Missing or invalid doctor_id or home_care_provider_id", http.StatusBadRequest)
+		return
+	}
+
 	if err := h.reviewService.CreateReview(r.Context(), &review); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
