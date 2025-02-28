@@ -59,6 +59,8 @@ type DoctorAvailabilityRepository interface {
 	GetByDoctorID(ctx context.Context, doctorID int) ([]*models.DoctorAvailability, error)
 	Update(ctx context.Context, availability *models.DoctorAvailability) error
 	Delete(ctx context.Context, id int) error
+	ListByDoctorID(ctx context.Context, doctorID int) ([]*models.DoctorAvailability, error)
+	ListAllAvailability(ctx context.Context) ([]*models.DoctorAvailability, error)
 }
 
 type MedicalHistoryRepository interface {

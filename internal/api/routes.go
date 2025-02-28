@@ -375,3 +375,8 @@ func registerDoctorAvailabilityRoutes(router *mux.Router, handler *handlers.Doct
 	router.HandleFunc("/doctors/{doctorId}/availability/{id}", handler.UpdateAvailability).Methods("PUT")
 	router.HandleFunc("/doctors/{doctorId}/availability/{id}", handler.DeleteAvailability).Methods("DELETE")
 }
+
+// Add new route for listing all availability slots
+func registerAvailabilityRoutes(router *mux.Router, handler *handlers.DoctorAvailabilityHandler) {
+	router.HandleFunc("/availability", handler.ListAllAvailability).Methods("GET")
+}
