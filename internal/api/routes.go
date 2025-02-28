@@ -132,11 +132,16 @@ func registerProtectedRoutes(protected *mux.Router, userHandler *handlers.UserHa
 func registerAppointmentRoutes(router *mux.Router, handler *handlers.AppointmentHandler) {
 	appointmentRouter := router.PathPrefix("/appointments").Subrouter()
 
+	// List/Search appointments with query parameters
+	appointmentRouter.HandleFunc("", handler.GetAppointmentsByProvider).
+		Methods("GET").
+		Queries("type", "{type}", "providerId", "{providerId}")
+
+	// Other routes
 	appointmentRouter.HandleFunc("", handler.CreateAppointment).Methods("POST")
 	appointmentRouter.HandleFunc("/{id}", handler.GetAppointment).Methods("GET")
 	appointmentRouter.HandleFunc("/{id}", handler.UpdateAppointment).Methods("PUT")
 	appointmentRouter.HandleFunc("/{id}", handler.DeleteAppointment).Methods("DELETE")
-	appointmentRouter.HandleFunc("/provider/{providerId}", handler.GetAppointmentsByProvider).Methods("GET")
 }
 
 // registerUserRoutes sets up all user-related routes

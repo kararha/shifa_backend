@@ -80,16 +80,18 @@ func (ct *CustomTime) Scan(value interface{}) error {
 
 // Appointment represents an appointment entity
 type Appointment struct {
-	ID                 int        `json:"id" db:"id"`
-	PatientID          int        `json:"patient_id" db:"patient_id"`
-	ProviderType       string     `json:"provider_type" db:"provider_type"`
-	DoctorID           *int       `json:"doctor_id,omitempty" db:"doctor_id"`
-	HomeCareProviderID *int       `json:"home_care_provider_id,omitempty" db:"home_care_provider_id"`
-	AppointmentDate    time.Time  `json:"appointment_date" db:"appointment_date"`
-	StartTime          CustomTime `json:"start_time" db:"start_time"`
-	EndTime            CustomTime `json:"end_time" db:"end_time"`
-	Status             string     `json:"status" db:"status"`
-	CancellationReason *string    `json:"cancellation_reason,omitempty" db:"cancellation_reason"`
-	CreatedAt          time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt          time.Time  `json:"updated_at" db:"updated_at"`
+	ID                 int        `json:"id"`
+	PatientID          int        `json:"patient_id"`
+	DoctorID           *int       `json:"doctor_id,omitempty"`
+	HomeCareProviderID *int       `json:"home_care_provider_id,omitempty"`
+	ServiceTypeID      int        `json:"service_type_id"`
+	AppointmentDate    time.Time  `json:"appointment_date"`
+	StartTime          CustomTime `json:"start_time"`
+	EndTime            CustomTime `json:"end_time"`
+	Status             string     `json:"status"`
+	CancellationReason *string    `json:"cancellation_reason,omitempty"`
+	ProviderType       string     `json:"provider_type"`
+	PatientName        string     `json:"patient_name,omitempty"`
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
 }

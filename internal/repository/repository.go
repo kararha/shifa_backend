@@ -4,8 +4,8 @@ package repository
 
 import (
 	"context"
-	"time"
 	"shifa/internal/models"
+	"time"
 )
 
 type UserRepository interface {
@@ -82,11 +82,10 @@ type AppointmentRepository interface {
 	Update(ctx context.Context, appointment *models.Appointment) error
 	Delete(ctx context.Context, id int) error
 	List(ctx context.Context, filter AppointmentFilter, offset, limit int) ([]*models.Appointment, error)
-	GetByPatientID(ctx context.Context, patientID, limit, offset int) ([]*models.Appointment, error)
 	GetByProviderID(ctx context.Context, providerID int, providerType string) ([]*models.Appointment, error)
+	GetByPatientID(ctx context.Context, patientID, limit, offset int) ([]*models.Appointment, error)
 }
 
-// ConsultationRepository defines the interface for consultation-related database operations
 type ConsultationRepository interface {
 	// Create inserts a new consultation into the database
 	Create(ctx context.Context, consultation *models.Consultation) error
@@ -251,15 +250,15 @@ type Appointment struct {
 }
 
 type Consultation struct {
-	ID                int       `json:"id" db:"id"`
-	PatientID         int       `json:"patient_id"`
-	DoctorID          int       `json:"doctor_id"`
-	AppointmentID     int       `json:"appointment_id" db:"appointment_id"`
-	ConsultationType  string    `json:"consultation_type" db:"consultation_type"`
-	Status            string    `json:"status" db:"status"`
-	StartedAt         time.Time `json:"started_at" db:"started_at"`
-	CompletedAt       time.Time `json:"completed_at" db:"completed_at"`
-	Fee               float64   `json:"fee" db:"fee"`
+	ID               int       `json:"id" db:"id"`
+	PatientID        int       `json:"patient_id"`
+	DoctorID         int       `json:"doctor_id"`
+	AppointmentID    int       `json:"appointment_id" db:"appointment_id"`
+	ConsultationType string    `json:"consultation_type" db:"consultation_type"`
+	Status           string    `json:"status" db:"status"`
+	StartedAt        time.Time `json:"started_at" db:"started_at"`
+	CompletedAt      time.Time `json:"completed_at" db:"completed_at"`
+	Fee              float64   `json:"fee" db:"fee"`
 }
 
 type HomeCareVisit struct {

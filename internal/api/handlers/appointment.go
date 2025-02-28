@@ -165,27 +165,27 @@ func (h *AppointmentHandler) GetAppointmentsByProvider(w http.ResponseWriter, r 
 }
 
 
-// func (h *AppointmentHandler) ListAppointmentsByPatient(w http.ResponseWriter, r *http.Request) {
-//     vars := mux.Vars(r)
-//     patientID, err := strconv.Atoi(vars["patientId"])
-//     if err != nil {
-//         http.Error(w, "Invalid patient ID", http.StatusBadRequest)
-//         return
-//     }
+func (h *AppointmentHandler) ListAppointmentsByPatient(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    patientID, err := strconv.Atoi(vars["patientId"])
+    if err != nil {
+        http.Error(w, "Invalid patient ID", http.StatusBadRequest)
+        return
+    }
 
-//     // Parse pagination parameters
-//     limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-//     offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
-//     if limit == 0 {
-//         limit = 10 // default limit
-//     }
+    // Parse pagination parameters
+    limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+    offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+    if limit == 0 {
+        limit = 10 // default limit
+    }
 
-//     appointments, err := h.appointmentService.GetAppointmentsByPatient(r.Context(), patientID, limit, offset)
-//     if err != nil {
-//         http.Error(w, err.Error(), http.StatusInternalServerError)
-//         return
-//     }
+    appointments, err := h.appointmentService.GetAppointmentsByPatient(r.Context(), patientID, limit, offset)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
 
-//     w.Header().Set("Content-Type", "application/json")
-//     json.NewEncoder(w).Encode(appointments)
-// }
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(appointments)
+}
