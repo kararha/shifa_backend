@@ -44,6 +44,7 @@ type HomeCareProviderRepository interface {
 	Update(ctx context.Context, provider *models.HomeCareProvider) error // Ensure this matches
 	Delete(ctx context.Context, id int) error
 	GetByServiceType(ctx context.Context, serviceTypeID int, limit, offset int) ([]*models.HomeCareProvider, error)
+	Search(ctx context.Context, query string) ([]*models.HomeCareProvider, error)
 }
 
 type ServiceTypeRepository interface {

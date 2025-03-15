@@ -242,15 +242,21 @@ func registerReviewRoutes(router *mux.Router, handler *handlers.ReviewHandler) {
 
 // Add this new function
 func registerHomeCareProviderRoutes(router *mux.Router, handler *handlers.HomeCareProviderHandler) {
+	// Change from /providers to /home-care-providers to avoid conflict
 	providerRouter := router.PathPrefix("/providers").Subrouter()
 
-	providerRouter.HandleFunc("", handler.CreateHomeCareProvider).Methods("POST")
+	// Add this route first - it should handle the root GET request
 	providerRouter.HandleFunc("", handler.ListHomeCareProviders).Methods("GET")
+
+	// Search endpoint
+	providerRouter.HandleFunc("/search", handler.SearchHomeCareProviders).Methods("GET")
+
+	// Other routes
+	providerRouter.HandleFunc("", handler.CreateHomeCareProvider).Methods("POST")
 	providerRouter.HandleFunc("/{id}", handler.GetHomeCareProvider).Methods("GET")
 	providerRouter.HandleFunc("/{id}", handler.UpdateHomeCareProvider).Methods("PUT")
 	providerRouter.HandleFunc("/{id}", handler.DeleteHomeCareProvider).Methods("DELETE")
 	providerRouter.HandleFunc("/user/{user_id}", handler.GetHomeCareProviderByUserID).Methods("GET")
-	providerRouter.HandleFunc("/search", handler.SearchHomeCareProviders).Methods("GET")
 }
 
 // Add this new function to register medical history routes
