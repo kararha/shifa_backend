@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 	"shifa/internal/models"
-	"shifa/internal/service"
+	"shifa/internal/service" // Updated import path
 	"strconv"
 
 	"github.com/gorilla/mux"
@@ -22,21 +22,33 @@ func NewHomeCareProviderHandler(hcpService *service.HomeCareProviderService) *Ho
 
 // CreateHomeCareProvider handles the creation of a new home care provider
 func (h *HomeCareProviderHandler) CreateHomeCareProvider(w http.ResponseWriter, r *http.Request) {
-	var hcp models.HomeCareProvider
-	if err := json.NewDecoder(r.Body).Decode(&hcp); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	var provider models.HomeCareProvider
+	if err := json.NewDecoder(r.Body).Decode(&provider); err != nil {
+		sendErrorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	err := h.hcpService.CreateHomeCareProvider(&hcp)
+	// Set default values
+	provider.IsAvailable = true
+	provider.Status = "pending"
+	provider.Rating = 0
+
+	// Validate required fields
+	if provider.UserID == 0 || provider.ServiceTypeID == 0 ||
+		provider.Qualifications == "" || provider.HourlyRate <= 0 {
+		sendErrorResponse(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
+
+	// Create the provider
+	err := h.hcpService.CreateHomeCareProvider(&provider)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error creating provider: %v", err)
+		sendErrorResponse(w, http.StatusInternalServerError, "Failed to create provider")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(hcp)
+	sendJSONResponse(w, http.StatusCreated, provider)
 }
 
 // GetHomeCareProvider handles retrieving a single home care provider
