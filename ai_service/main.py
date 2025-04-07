@@ -1,193 +1,145 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import subprocess
-import traceback
-from typing import Dict, List
-import re
-import asyncio
-from cachetools import TTLCache
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
-import threading
-import sys
+import os
+import uuid
+from flask import Flask, request, jsonify, render_template
+import requests
+from flask_cors import CORS
 
-app = FastAPI()
+app = Flask(__name__)
+CORS(app)
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# API Configuration
+# API_KEY = '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'
+API_KEY = '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'
+API_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
-# In-memory storage for conversation history
-conversation_history: Dict[str, List[str]] = {}
-
-# Add cache with 1-hour TTL
-response_cache = TTLCache(maxsize=100, ttl=3600)
-
-class Query(BaseModel):
-    question: str
-    conversation_id: str = None  # Optional conversation ID for context
-
-def detect_language(text):
-    # Improved Arabic detection including common Arabic characters and diacritics
-    arabic_pattern = re.compile(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+')
-    arabic_match = arabic_pattern.search(text)
-    return "ar" if arabic_match else "en"
-
-def preprocess_arabic(text: str) -> str:
-    """Preprocess Arabic text for better model handling"""
-    # Remove excessive whitespace while preserving Arabic text
-    text = ' '.join(text.split())
-    # Normalize Arabic characters
-    text = text.replace('ی', 'ي').replace('ک', 'ك')
-    return text
-
-def build_prompt(question: str, conversation_id: str = None) -> str:
-    """Enhanced prompt building with medical Arabic support for DeepSeek"""
-    language = detect_language(question)
-    
-    if language == "ar":
-        question = preprocess_arabic(question)
-        system_prompt = """<|system|>أنت مساعد طبي متخصص باللغة العربية. اتبع هذه القواعد:
-1. قدم نصائح طبية أولية واضحة ودقيقة
-2. استخدم لغة عربية فصحى مبسطة
-3. كن مباشراً في إجاباتك
-4. اذكر متى يجب استشارة الطبيب
-5. تجنب التشخيص القطعي
-
-<|user|>"""
-    else:
-        system_prompt = """<|system|>You are a specialized medical assistant. Follow these rules:
-1. Provide clear initial medical advice
-2. Use simple language
-3. Be direct in your responses
-4. Mention when to consult a doctor
-5. Avoid definitive diagnosis
-
-<|user|>"""
-
-    if not conversation_id:
-        return system_prompt + question
-
-    history = conversation_history.get(conversation_id, [])
-    context = "\nسياق المحادثة:\n" if language == "ar" else "\nConversation context:\n"
-    full_prompt = system_prompt + context + "\n".join(history) + "\n\nالسؤال الحالي: " + question if language == "ar" else system_prompt + context + "\n".join(history) + "\n\nCurrent question: " + question
-    
-    return full_prompt
-
-def run_model_sync(command: List[str], prompt: str) -> str:
-    """Run the model synchronously with proper encoding"""
-    try:
-        # Force UTF-8 encoding for stdin/stdout
-        process = subprocess.Popen(
-            command,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=False  # Changed to handle bytes instead of text
-        )
-        
-        # Encode prompt to UTF-8 bytes
-        prompt_bytes = prompt.encode('utf-8')
-        stdout, stderr = process.communicate(input=prompt_bytes)
-        
-        if process.returncode != 0:
-            raise Exception(f"Model error: {stderr.decode('utf-8', errors='replace').strip()}")
-            
-        # Decode output with UTF-8
-        return stdout.decode('utf-8', errors='replace').strip()
-    except Exception as e:
-        raise Exception(f"Model execution error: {str(e)}")
-
-async def run_model_with_timeout(command: List[str], prompt: str, timeout: int = 15) -> str:
-    """Run the model with timeout using thread pool"""
-    loop = asyncio.get_event_loop()
-    with ThreadPoolExecutor() as executor:
-        try:
-            return await loop.run_in_executor(
-                executor,
-                lambda: run_model_sync(command, prompt)
-            )
-        except TimeoutError:
-            raise HTTPException(status_code=408, detail="Request timeout")
-        except Exception as e:
-            raise Exception(f"Model error: {str(e)}")
-
-# Add model configuration
-AVAILABLE_MODELS = {
-    "medical": "dolphin-llama3",  # Primary model for medical queries
-    "fallback": "mistral"       # Fallback model if primary fails         # For complex medical terminology
+headers = {
+    'Authorization': f'Bearer {API_KEY}',
+    'Content-Type': 'application/json'
 }
 
-def select_model(query: str, language: str) -> str:
-    """Select the appropriate model based on query complexity and language"""
-    # Add your model selection logic here
-    return AVAILABLE_MODELS["medical"]  # Default to medical model for now
+SYSTEM_PROMPTS = {
+    'ar': """أنت مساعد طبي ذكي، مهمتك:
+1. اسأل عن الأعراض بشكل متتابع
+2. قدم نصائح محددة بناء على الإجابات
+3. لا تكرر التحيات أو التعريفات
+4. ذكر الإخلاء القانوني مرة واحدة فقط
+5. استخدم نقاطًا محددة عند تقديم النصائح
+6. حافظ على إجابات موجزة ومركزة""",
+    
+    'en': """You are a medical AI assistant. Your role:
+1. Ask follow-up questions sequentially 
+2. Provide specific advice based on responses
+3. Never repeat greetings/introductions
+4. Mention disclaimer once initially
+5. Use bullet points for advice
+6. Keep responses concise and focused"""
+}
 
-async def try_alternate_model(command: List[str], prompt: str, current_model: str) -> tuple[str, str]:
-    """Try an alternate model if the current one fails"""
-    try:
-        response = await run_model_with_timeout(command, prompt)
-        return response, current_model
-    except Exception:
-        fallback_model = AVAILABLE_MODELS["fallback"]
-        if current_model != fallback_model:
-            command[2] = fallback_model
-            try:
-                response = await run_model_with_timeout(command, prompt)
-                return response, fallback_model
-            except Exception as e:
-                raise Exception(f"Both primary and fallback models failed: {str(e)}")
-        raise
+conversation_history = {}
 
-@app.post("/chat/")
-async def chat(query: Query):
-    try:
-        # Try to get cached response
-        cache_key = f"{query.conversation_id}:{query.question}"
-        if cache_key in response_cache:
-            return response_cache[cache_key]
+def detect_language(text):
+    """Enhanced language detection with context awareness"""
+    if any('\u0600' <= char <= '\u06FF' for char in text):
+        return 'ar'
+    # Check conversation history if empty input
+    return 'en'
 
-        detected_language = detect_language(query.question)
-        
-        if detected_language == "ar":
-            query.question = preprocess_arabic(query.question)
+def get_system_prompt(language):
+    """Return appropriate system prompt"""
+    base_prompt = SYSTEM_PROMPTS[language]
+    if language == 'ar':
+        return f"{base_prompt}\n\nملاحظة: هذه استشارة أولية - يجب مراجعة طبيب للتشخيص الدقيق"
+    return f"{base_prompt}\n\nNote: This is preliminary advice - consult a doctor for proper diagnosis"
 
-        prompt = build_prompt(query.question, query.conversation_id)
-        selected_model = select_model(query.question, detected_language)
-        
-        command = ["ollama", "run", selected_model]
-        
-        # Try primary model with fallback
-        response_text, used_model = await try_alternate_model(command, prompt, selected_model)
-
-        if not response_text:
-            response_text = "لا يوجد رد من النموذج" if detected_language == "ar" else "No response from model"
-
-        # Update conversation history
-        if query.conversation_id:
-            if query.conversation_id not in conversation_history:
-                conversation_history[query.conversation_id] = []
-            conversation_history[query.conversation_id].append(f"User: {query.question}")
-            conversation_history[query.conversation_id].append(f"AI: {response_text}")
-
-        result = {
-            "answer": response_text,
-            "language": detected_language,
-            "preprocessed": detected_language == "ar",
-            "model_used": used_model
+def manage_conversation(session_id, question):
+    """Manage conversation flow and history"""
+    language = detect_language(question)
+    
+    if session_id not in conversation_history:
+        conversation_history[session_id] = {
+            'history': [{"role": "system", "content": get_system_prompt(language)}],
+            'state': 'initial',
+            'language': language
         }
+        # Add initial greeting
+        greeting = initial_message(language)
+        conversation_history[session_id]['history'].append(
+            {"role": "assistant", "content": greeting}
+        )
+    
+    # Add user message
+    conv = conversation_history[session_id]
+    conv['history'].append({"role": "user", "content": question})
+    
+    # Generate response
+    response = generate_ai_response(conv['history'], conv['language'])
+    conv['history'].append({"role": "assistant", "content": response})
+    
+    return response
 
-        # Cache the response
-        response_cache[cache_key] = result
-        
-        return result
+def initial_message(language):
+    """Language-specific initial message"""
+    if language == 'ar':
+        return "مرحبًا، كيف يمكنني مساعدتك اليوم؟ يرجى وصف الأعراض الرئيسية."
+    return "Hello, how can I assist you today? Please describe your main symptoms."
 
+def generate_ai_response(history, lang):
+    """Generate AI response with conversation context"""
+    data = {
+        "model": "meta-llama/llama-3-70b-instruct",
+        "messages": history,
+        "temperature": 0.3,
+        "max_tokens": 500
+    }
+
+    try:
+        response = requests.post(API_URL, json=data, headers=headers)
+        if response.status_code == 200:
+            return postprocess_response(
+                response.json()['choices'][0]['message']['content'],
+                lang
+            )
+        return error_message(lang)
     except Exception as e:
-        error_message = "حدث خطأ في النظام" if detected_language == "ar" else "System error occurred"
-        error_details = traceback.format_exc()
-        raise HTTPException(status_code=500, detail=f"{error_message}: {error_details}")
+        print(f"API Error: {str(e)}")
+        return error_message(lang)
+
+def postprocess_response(text, lang):
+    """Clean up the AI response"""
+    # Remove redundant greetings
+    remove_phrases = {
+        'ar': ["مرحبًا", "أهلاً", "أنت دكتور ذكاء اصطناعي"],
+        'en': ["Hello", "Hi there", "As an AI assistant"]
+    }
+    for phrase in remove_phrases[lang]:
+        text = text.replace(phrase, "")
+    return text.strip()
+
+def error_message(lang):
+    """Return appropriate error message"""
+    if lang == 'ar':
+        return "حدث خطأ في النظام. يرجى المحاولة مرة أخرى لاحقًا."
+    return "System error. Please try again later."
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/ask', methods=['POST'])
+def handle_query():
+    data = request.json
+    question = data.get('question', '').strip()
+    session_id = data.get('session_id', str(uuid.uuid4()))
+    
+    if not question:
+        return jsonify({"error": "No question provided"}), 400
+    
+    response = manage_conversation(session_id, question)
+    return jsonify({
+        "response": response,
+        "session_id": session_id,
+        "symptoms": []  # Added empty list for front-end compatibility
+    })
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8000, debug=True)  # Run the app on port 8000
