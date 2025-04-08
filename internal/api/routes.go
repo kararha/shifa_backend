@@ -43,6 +43,7 @@ func NewRouter(db *sql.DB, log *logrus.Logger, jwtSecret string) *mux.Router {
 	homeCareVisitRepo := mysql.NewHomeVisitRepo(db)
 	systemLogRepo := mysql.NewSystemLogRepo(db)                   // Create SystemLogRepo first
 	doctorAvailabilityRepo := mysql.NewDoctorAvailabilityRepo(db) // Add this line
+	consultationDetailsRepo := mysql.NewConsultationDetailsRepo(db)
 
 	// Initialize services
 	appointmentService := service.NewAppointmentService(
@@ -66,6 +67,7 @@ func NewRouter(db *sql.DB, log *logrus.Logger, jwtSecret string) *mux.Router {
 	authService := service.NewAuthService(userRepo, jwtSecret)
 	systemLogService := service.NewSystemLogService(systemLogRepo)                                 // Pass systemLogRepo to NewSystemLogService
 	doctorAvailabilityService := service.NewDoctorAvailabilityService(doctorAvailabilityRepo, log) // Add this line
+	consultationDetailsService := service.NewConsultationDetailsService(consultationDetailsRepo, log)
 
 	// Initialize handlers
 	appointmentHandler := handlers.NewAppointmentHandler(appointmentService)
@@ -83,6 +85,7 @@ func NewRouter(db *sql.DB, log *logrus.Logger, jwtSecret string) *mux.Router {
 	homeCareVisitHandler := handlers.NewHomeCareVisitHandler(homeCareVisitService, log)
 	authHandler := handlers.NewAuthHandler(authService)
 	doctorAvailabilityHandler := handlers.NewDoctorAvailabilityHandler(doctorAvailabilityService) // Add this line
+	consultationDetailsHandler := handlers.NewConsultationDetailsHandler(consultationDetailsService)
 
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(jwtSecret)
@@ -103,6 +106,7 @@ func NewRouter(db *sql.DB, log *logrus.Logger, jwtSecret string) *mux.Router {
 	registerNotificationRoutes(apiRouter, notificationHandler)
 	registerHomeCareVisitRoutes(apiRouter, homeCareVisitHandler)
 	registerDoctorAvailabilityRoutes(apiRouter, doctorAvailabilityHandler) // Add this line
+	registerConsultationDetailsRoutes(apiRouter, consultationDetailsHandler)
 	// Register public routes (no auth required)
 	registerAuthRoutes(apiRouter, authHandler)
 
@@ -385,4 +389,20 @@ func registerDoctorAvailabilityRoutes(router *mux.Router, handler *handlers.Doct
 // Add new route for listing all availability slots
 func registerAvailabilityRoutes(router *mux.Router, handler *handlers.DoctorAvailabilityHandler) {
 	router.HandleFunc("/availability", handler.ListAllAvailability).Methods("GET")
+}
+
+
+
+func registerConsultationDetailsRoutes(router *mux.Router, handler *handlers.ConsultationDetailsHandler) {
+	// Route to get details by consultation ID
+	router.HandleFunc("/consultations/{consultationId}/details", handler.GetDetailsByConsultation).Methods("GET")
+	
+	// Route to create details for a consultation
+	router.HandleFunc("/consultations/{consultationId}/details", handler.CreateDetails).Methods("POST")
+	
+	// Routes for direct access to consultation details
+	detailsRouter := router.PathPrefix("/consultation-details").Subrouter()
+	detailsRouter.HandleFunc("/{id}", handler.GetDetails).Methods("GET")
+	detailsRouter.HandleFunc("/{id}", handler.UpdateDetails).Methods("PUT")
+	detailsRouter.HandleFunc("/{id}", handler.DeleteDetails).Methods("DELETE")
 }

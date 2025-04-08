@@ -5,30 +5,39 @@ package mysql
 import (
 	"context"
 	"database/sql"
-
+	"errors"
 	"shifa/internal/models"
 )
 
-// ConsultationDetailsRepo represents the MySQL repository for consultation details-related database operations
+// ConsultationDetailsRepo implements the ConsultationDetailsRepository interface
 type ConsultationDetailsRepo struct {
 	db *sql.DB
 }
 
 // NewConsultationDetailsRepo creates a new ConsultationDetailsRepo instance
 func NewConsultationDetailsRepo(db *sql.DB) *ConsultationDetailsRepo {
-	return &ConsultationDetailsRepo{db: db}
+	return &ConsultationDetailsRepo{
+		db: db,
+	}
 }
 
-// Create inserts new consultation details into the database
+// Create inserts a new consultation details record
 func (r *ConsultationDetailsRepo) Create(ctx context.Context, details *models.ConsultationDetails) error {
 	query := `
-		INSERT INTO consultation_details (consultation_id, request_details, symptoms, diagnosis, prescription, notes)
+		INSERT INTO consultation_details 
+		(consultation_id, request_details, symptoms, diagnosis, prescription, notes)
 		VALUES (?, ?, ?, ?, ?, ?)
 	`
-	
-	result, err := r.db.ExecContext(ctx, query, 
-		details.ConsultationID, details.RequestDetails, details.Symptoms,
-		details.Diagnosis, details.Prescription, details.Notes)
+
+	result, err := r.db.ExecContext(ctx, query,
+		details.ConsultationID,
+		details.RequestDetails,
+		details.Symptoms,
+		details.Diagnosis,
+		details.Prescription,
+		details.Notes,
+	)
+
 	if err != nil {
 		return err
 	}
@@ -42,7 +51,7 @@ func (r *ConsultationDetailsRepo) Create(ctx context.Context, details *models.Co
 	return nil
 }
 
-// GetByID retrieves consultation details by their ID
+// GetByID retrieves consultation details by ID
 func (r *ConsultationDetailsRepo) GetByID(ctx context.Context, id int) (*models.ConsultationDetails, error) {
 	query := `
 		SELECT id, consultation_id, request_details, symptoms, diagnosis, prescription, notes
@@ -52,18 +61,26 @@ func (r *ConsultationDetailsRepo) GetByID(ctx context.Context, id int) (*models.
 
 	var details models.ConsultationDetails
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&details.ID, &details.ConsultationID, &details.RequestDetails,
-		&details.Symptoms, &details.Diagnosis, &details.Prescription, &details.Notes,
+		&details.ID,
+		&details.ConsultationID,
+		&details.RequestDetails,
+		&details.Symptoms,
+		&details.Diagnosis,
+		&details.Prescription,
+		&details.Notes,
 	)
 
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New("consultation details not found")
+		}
 		return nil, err
 	}
 
 	return &details, nil
 }
 
-// GetByConsultationID retrieves consultation details by the consultation ID
+// GetByConsultationID retrieves consultation details by consultation ID
 func (r *ConsultationDetailsRepo) GetByConsultationID(ctx context.Context, consultationID int) (*models.ConsultationDetails, error) {
 	query := `
 		SELECT id, consultation_id, request_details, symptoms, diagnosis, prescription, notes
@@ -73,35 +90,52 @@ func (r *ConsultationDetailsRepo) GetByConsultationID(ctx context.Context, consu
 
 	var details models.ConsultationDetails
 	err := r.db.QueryRowContext(ctx, query, consultationID).Scan(
-		&details.ID, &details.ConsultationID, &details.RequestDetails,
-		&details.Symptoms, &details.Diagnosis, &details.Prescription, &details.Notes,
+		&details.ID,
+		&details.ConsultationID,
+		&details.RequestDetails,
+		&details.Symptoms,
+		&details.Diagnosis,
+		&details.Prescription,
+		&details.Notes,
 	)
 
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New("consultation details not found")
+		}
 		return nil, err
 	}
 
 	return &details, nil
 }
 
-// Update updates existing consultation details in the database
+// Update modifies existing consultation details
 func (r *ConsultationDetailsRepo) Update(ctx context.Context, details *models.ConsultationDetails) error {
 	query := `
 		UPDATE consultation_details
-		SET request_details = ?, symptoms = ?, diagnosis = ?, prescription = ?, notes = ?
+		SET request_details = ?, 
+			symptoms = ?, 
+			diagnosis = ?, 
+			prescription = ?, 
+			notes = ?
 		WHERE id = ?
 	`
 
 	_, err := r.db.ExecContext(ctx, query,
-		details.RequestDetails, details.Symptoms, details.Diagnosis,
-		details.Prescription, details.Notes, details.ID)
+		details.RequestDetails,
+		details.Symptoms,
+		details.Diagnosis,
+		details.Prescription,
+		details.Notes,
+		details.ID,
+	)
 
 	return err
 }
 
-// Delete removes consultation details from the database
+// Delete removes consultation details by ID
 func (r *ConsultationDetailsRepo) Delete(ctx context.Context, id int) error {
-	query := `DELETE FROM consultation_details WHERE id = ?`
+	query := "DELETE FROM consultation_details WHERE id = ?"
 	_, err := r.db.ExecContext(ctx, query, id)
 	return err
 }

@@ -154,6 +154,14 @@ type NotificationRepository interface {
 	GetUnreadCount(ctx context.Context, userID int) (int, error)
 }
 
+type ConsultationDetailsRepository interface {
+	Create(ctx context.Context, details *models.ConsultationDetails) error
+	GetByID(ctx context.Context, id int) (*models.ConsultationDetails, error)
+	GetByConsultationID(ctx context.Context, consultationID int) (*models.ConsultationDetails, error)
+	Update(ctx context.Context, details *models.ConsultationDetails) error
+	Delete(ctx context.Context, id int) error
+}
+
 // Structs representing database entities
 type User struct {
 	ID           int
