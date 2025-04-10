@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+
 	// "time"
 
 	"shifa/internal/models"
@@ -24,13 +25,16 @@ func NewConsultationRepo(db *sql.DB) *ConsultationRepo {
 // Create inserts a new consultation into the database
 func (r *ConsultationRepo) Create(ctx context.Context, consultation *models.Consultation) error {
 	query := `
-		INSERT INTO consultations (patient_id, doctor_id, status, fee)
-		VALUES (?, ?, ?, ?)
+		INSERT INTO consultations (patient_id, doctor_id, status, started_at, completed_at, fee)
+		VALUES (?, ?, ?, ?, ?, ?)
 	`
-	
-	result, err := r.db.ExecContext(ctx, query, 
+
+	result, err := r.db.ExecContext(ctx, query,
 		consultation.PatientID, consultation.DoctorID,
-		consultation.Status, consultation.Fee)
+		consultation.Status,
+		sql.NullTime{Time: consultation.StartedAt.Time, Valid: consultation.StartedAt.Valid},
+		sql.NullTime{Time: consultation.CompletedAt.Time, Valid: consultation.CompletedAt.Valid},
+		consultation.Fee)
 	if err != nil {
 		return err
 	}
@@ -71,28 +75,28 @@ func (r *ConsultationRepo) GetByID(ctx context.Context, id int) (*models.Consult
 
 // GetByAppointmentID retrieves a consultation by its appointment ID
 func (r *ConsultationRepo) GetByAppointmentID(ctx context.Context, appointmentID int) (*models.Consultation, error) {
-    query := `
+	query := `
         SELECT id, patient_id, doctor_id, status, started_at, completed_at, fee
         FROM consultations
         WHERE appointment_id = ?
         LIMIT 1
     `
 
-    var consultation models.Consultation
-    err := r.db.QueryRowContext(ctx, query, appointmentID).Scan(
-        &consultation.ID, &consultation.PatientID, &consultation.DoctorID,
-        &consultation.Status, &consultation.StartedAt, &consultation.CompletedAt,
-        &consultation.Fee,
-    )
+	var consultation models.Consultation
+	err := r.db.QueryRowContext(ctx, query, appointmentID).Scan(
+		&consultation.ID, &consultation.PatientID, &consultation.DoctorID,
+		&consultation.Status, &consultation.StartedAt, &consultation.CompletedAt,
+		&consultation.Fee,
+	)
 
-    if err != nil {
-        if errors.Is(err, sql.ErrNoRows) {
-            return nil, errors.New("consultation not found")
-        }
-        return nil, err
-    }
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New("consultation not found")
+		}
+		return nil, err
+	}
 
-    return &consultation, nil
+	return &consultation, nil
 }
 
 // Update updates an existing consultation's information
@@ -105,7 +109,8 @@ func (r *ConsultationRepo) Update(ctx context.Context, consultation *models.Cons
 
 	_, err := r.db.ExecContext(ctx, query,
 		consultation.Status,
-		consultation.StartedAt, consultation.CompletedAt,
+		sql.NullTime{Time: consultation.StartedAt.Time, Valid: consultation.StartedAt.Valid},
+		sql.NullTime{Time: consultation.CompletedAt.Time, Valid: consultation.CompletedAt.Valid},
 		consultation.Fee, consultation.ID)
 
 	return err
@@ -120,57 +125,57 @@ func (r *ConsultationRepo) Delete(ctx context.Context, id int) error {
 
 // List retrieves a list of consultations with optional filtering and pagination
 func (r *ConsultationRepo) List(ctx context.Context, filter models.ConsultationFilter, offset, limit int) ([]*models.Consultation, error) {
-    query := `
+	query := `
         SELECT id, patient_id, doctor_id,
                status, started_at, completed_at, fee
         FROM consultations
         WHERE 1=1
     `
-    var args []interface{}
+	var args []interface{}
 
-    if filter.PatientID != 0 {
-        query += " AND patient_id = ?"
-        args = append(args, filter.PatientID)
-    }
+	if filter.PatientID != 0 {
+		query += " AND patient_id = ?"
+		args = append(args, filter.PatientID)
+	}
 
-    if filter.DoctorID != 0 {
-        query += " AND doctor_id = ?"
-        args = append(args, filter.DoctorID)
-    }
+	if filter.DoctorID != 0 {
+		query += " AND doctor_id = ?"
+		args = append(args, filter.DoctorID)
+	}
 
-    if filter.Status != "" {
-        query += " AND status = ?"
-        args = append(args, filter.Status)
-    }
+	if filter.Status != "" {
+		query += " AND status = ?"
+		args = append(args, filter.Status)
+	}
 
-    if !filter.StartDateFrom.IsZero() {
-        query += " AND started_at >= ?"
-        args = append(args, filter.StartDateFrom)
-    }
+	if !filter.StartDateFrom.IsZero() {
+		query += " AND started_at >= ?"
+		args = append(args, filter.StartDateFrom)
+	}
 
-    if !filter.StartDateTo.IsZero() {
-        query += " AND started_at <= ?"
-        args = append(args, filter.StartDateTo)
-    }
+	if !filter.StartDateTo.IsZero() {
+		query += " AND started_at <= ?"
+		args = append(args, filter.StartDateTo)
+	}
 
-    if !filter.CompletedDateFrom.IsZero() {
-        query += " AND completed_at >= ?"
-        args = append(args, filter.CompletedDateFrom)
-    }
+	if !filter.CompletedDateFrom.IsZero() {
+		query += " AND completed_at >= ?"
+		args = append(args, filter.CompletedDateFrom)
+	}
 
-    if !filter.CompletedDateTo.IsZero() {
-        query += " AND completed_at <= ?"
-        args = append(args, filter.CompletedDateTo)
-    }
+	if !filter.CompletedDateTo.IsZero() {
+		query += " AND completed_at <= ?"
+		args = append(args, filter.CompletedDateTo)
+	}
 
-    query += " ORDER BY started_at DESC LIMIT ? OFFSET ?"
-    args = append(args, limit, offset)
+	query += " ORDER BY started_at DESC LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
 
-    rows, err := r.db.QueryContext(ctx, query, args...)
-    if (err != nil) {
-        return nil, err
-    }
-    defer rows.Close()
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
 	var consultations []*models.Consultation
 	for rows.Next() {
